@@ -77,6 +77,23 @@ re-reviewed clean:
 - Verified over CDP in the dev app at 1815d235: two spent accounts red, active
   green, next orange dotted, no overlap, footer on one row.
 
+Follow-ups after the user's dev-run review (dd53ebfe, 16401a22, 49cb4a67,
+re-reviewed clean):
+
+- The "as of HH:MM" timestamp moved into the header subtitle; the footer is
+  only the button row. The header chip row reserves room for the dialog's
+  close button.
+- Full suite at 1815d235 (13226 files): one real regression, the grazr IPC
+  registration read `app.getAppPath()` eagerly inside `registerCoreHandlers`,
+  which broke the upstream registrar test's electron mock. Fixed by resolving
+  the engine root lazily and registering the grazr channels once from
+  `registerMainProcessIpcHandlers` (main-process bootstrap). The remaining
+  failures are in files this branch never touched and are environmental:
+  cross-version-wire tests need release tags this clone lacks, zsh shell-ready
+  marker tests, `/private/var` temp-path expectations, daemon and pty tests
+  under a load average above 60. Registrar, startup and grazr suites: 88 files,
+  796 tests passed at 49cb4a67.
+
 Parked for a later round (reviewer minors): overall deadline for status calls
 over a dead SSH link, draining notices on open and on each poll, translating the
 view-model labels, stripping injected `CLAUDE_CONFIG_DIR` vars on local runs,
