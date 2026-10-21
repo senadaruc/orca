@@ -37,11 +37,12 @@ export function createAppGrazrService(): GrazrApi {
       }),
     getConnection: getGrazrConnection,
     execCommand,
-    engineRoot: resolveGrazrEngineRoot({
-      isPackaged: app.isPackaged,
-      resourcesPath: process.resourcesPath,
-      appPath: app.getAppPath()
-    }),
+    resolveEngineRoot: () =>
+      resolveGrazrEngineRoot({
+        isPackaged: app.isPackaged,
+        resourcesPath: process.resourcesPath,
+        appPath: app.getAppPath()
+      }),
     readEngineVersion: readGrazrEngineVersion,
     copyDir: (from, to) => cp(from, to, { recursive: true, force: true }),
     homedir,

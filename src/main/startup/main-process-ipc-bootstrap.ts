@@ -10,8 +10,11 @@ import {
   structuredAgentSessionsHeld
 } from '../native-chat/agent-session-wire/structured-agent-session-registry'
 import { subscribeAgentSessionUploadRemoval } from '../native-chat/agent-session-attachments/agent-session-attachment-store-registry'
+import { createAppGrazrService, registerGrazrHandlers } from '../ipc/grazr'
 
 export function registerMainProcessIpcHandlers(): void {
+  // Why: grazr channels are global, so they register once at startup rather than per window.
+  registerGrazrHandlers(createAppGrazrService())
   ipcMain.handle('app:awaitFirstWindowStartupServices', async () => {
     await Promise.all([
       state.firstWindowStartupServicesReady,

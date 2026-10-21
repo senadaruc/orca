@@ -25,7 +25,7 @@ export type GrazrServiceDeps = {
     command: string,
     options?: { timeoutMs?: number }
   ) => Promise<string>
-  engineRoot: string
+  resolveEngineRoot: () => string
   readEngineVersion: (engineRoot: string) => Promise<string>
   copyDir: (from: string, to: string) => Promise<void>
   homedir: () => string
@@ -135,7 +135,10 @@ function actionResult(invocation: Invocation): GrazrActionResult {
 export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
   // Why: one host's verbs run in order, so a status never reads the engine mid-swap.
   const queues = new Map<string, Promise<void>>()
-  const readBundledVersion = cachedBundledVersion(() => deps.readEngineVersion(deps.engineRoot))
+  // Why: resolving the root reads the Electron app, so it waits for the first status or deploy.
+  let engineRoot: string | null = null
+  const currentEngineRoot = (): string => (engineRoot ??= deps.resolveEngineRoot())
+  const readBundledVersion = cachedBundledVersion(() => deps.readEngineVersion(currentEngineRoot()))
 
   function serial<T>(host: GrazrHostRef, task: () => Promise<T>): Promise<T> {
     const key = grazrHostKey(host)
@@ -221,7 +224,7 @@ export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
   ): Promise<GrazrActionResult> {
     try {
       if (resolved.kind === 'local') {
-        await deps.copyDir(deps.engineRoot, join(deps.homedir(), ...ENGINE_DIR_SEGMENTS))
+        await deps.copyDir(currentEngineRoot(), join(deps.homedir(), ...ENGINE_DIR_SEGMENTS))
         return {
           ok: true,
           message: translateMain(
@@ -254,7 +257,7 @@ export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
       await deps.execCommand(connection, `mkdir -p ${quotePosixShell(remoteEngine)}`, {
         timeoutMs: DEPLOY_TIMEOUT_MS
       })
-      await connection.uploadDirectory(deps.engineRoot, remoteEngine, { signal })
+      await connection.uploadDirectory(currentEngineRoot(), remoteEngine, { signal })
       return {
         ok: true,
         message: translateMain('grazr.main.deployedHost', 'Deployed the engine to the host.')

@@ -47,7 +47,7 @@ function service(runner: GrazrEngineRunner, overrides: Partial<GrazrServiceDeps>
     resolve: () => ({ kind: 'local' }),
     getConnection: () => undefined,
     execCommand: () => Promise.reject(new Error('ssh is not scripted in this test')),
-    engineRoot: '/app/resources/grazr/engine',
+    resolveEngineRoot: () => '/app/resources/grazr/engine',
     readEngineVersion: () => Promise.resolve('1.4.0'),
     copyDir: () => Promise.resolve(),
     homedir: () => '/Users/a',
@@ -88,6 +88,12 @@ describe('createGrazrService status', () => {
       outcome: { kind: 'not-deployed' },
       engineOutdated: false
     })
+  })
+
+  it('does not resolve the engine root until a status or deploy needs it', () => {
+    const resolveEngineRoot = vi.fn(() => '/app/resources/grazr/engine')
+    service(scriptedRunner({}), { resolveEngineRoot })
+    expect(resolveEngineRoot).not.toHaveBeenCalled()
   })
 
   it('reports a host without the engine file as not deployed', async () => {
