@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import { z } from 'zod'
+import { translateMain } from '../i18n/main-i18n'
 import type {
   GrazrApi,
   GrazrActionResult,
@@ -10,28 +11,36 @@ import type {
 import { grazrHostKey, type GrazrHostRef } from '../../shared/grazr-host'
 import { parseGrazrStatusReport } from '../../shared/grazr-status-report'
 import { quotePosixShell } from '../../shared/shell-argument-quoting'
-import type { SshConnection } from '../ssh/connection/ssh-connection'
-import type { execCommand } from '../ssh/remote-exec/remote-exec-command'
 import { grazrEnrolTerminalCommand, type GrazrVerb } from './grazr-engine-command'
 import { classifyGrazrOutcome, type GrazrFailure } from './grazr-engine-outcome'
-import type { GrazrEngineRunner, GrazrRunResult } from './grazr-engine-runner'
+import type { GrazrEngineRunner, GrazrRunResult, GrazrSshConnection } from './grazr-engine-runner'
 import type { GrazrResolvedHost } from './grazr-host-resolver'
 
 export type GrazrServiceDeps = {
   runner: GrazrEngineRunner
   resolve: (host: GrazrHostRef) => GrazrResolvedHost
-  getConnection: (sshTargetId: string) => SshConnection | undefined
-  execCommand: typeof execCommand
+  getConnection: (sshTargetId: string) => GrazrSshConnection | undefined
+  execCommand: (
+    connection: GrazrSshConnection,
+    command: string,
+    options?: { timeoutMs?: number }
+  ) => Promise<string>
   engineRoot: string
   copyDir: (from: string, to: string) => Promise<void>
   homedir: () => string
   platform: NodeJS.Platform
 }
 
-const STATUS_TIMEOUT_MS = 20_000
-const ACTION_TIMEOUT_MS = 120_000
-const NOTICES_TIMEOUT_MS = 20_000
-const LOCAL_LABEL = 'This computer'
+const VERB_TIMEOUT_MS: Record<GrazrVerb, number> = {
+  status: 10_000,
+  refresh: 10_000,
+  swap: 10_000,
+  set: 10_000,
+  install: 20_000,
+  uninstall: 20_000,
+  'notices-drain': 10_000
+}
+const DEPLOY_TIMEOUT_MS = 60_000
 const FOREIGN_OWNER = 'already belongs'
 const ENGINE_DIR_SEGMENTS = ['.local', 'share', 'orca-grazr', 'engine']
 
@@ -52,13 +61,17 @@ const messageOf = (text: string): string =>
 function failureMessage(failure: GrazrFailure): string {
   switch (failure.kind) {
     case 'timeout':
-      return 'The engine timed out.'
+      return translateMain('grazr.main.timedOut', 'The engine timed out.')
     case 'not-deployed':
-      return 'Grazr is not installed on this host yet.'
+      return translateMain('grazr.main.notInstalled', 'Grazr is not installed on this host yet.')
     case 'missing-python':
-      return `python3 is not available: ${failure.detail}`
+      return translateMain('grazr.main.pythonMissing', 'python3 is not available: {{detail}}', {
+        detail: failure.detail
+      })
     case 'unreachable':
-      return `Could not reach the host: ${failure.detail}`
+      return translateMain('grazr.main.unreachable', 'Could not reach the host: {{detail}}', {
+        detail: failure.detail
+      })
     case 'engine':
     case 'exit':
       return failure.detail
@@ -67,12 +80,14 @@ function failureMessage(failure: GrazrFailure): string {
 
 function blockedMessage(reason: 'no-ssh-access' | 'unsupported-platform'): string {
   return reason === 'unsupported-platform'
-    ? 'Grazr is not available on this platform.'
-    : 'Connect this host over SSH first.'
+    ? translateMain('grazr.main.unsupportedPlatform', 'Grazr is not available on this platform.')
+    : translateMain('grazr.main.noSshAccess', 'Connect this host over SSH first.')
 }
 
 function labelOf(resolved: GrazrResolvedHost): string {
-  return resolved.kind === 'ssh' || resolved.kind === 'no-ssh-access' ? resolved.label : LOCAL_LABEL
+  return resolved.kind === 'ssh' || resolved.kind === 'no-ssh-access'
+    ? resolved.label
+    : translateMain('grazr.main.thisComputer', 'This computer')
 }
 
 function statusOutcome(result: GrazrRunResult, remote: boolean): GrazrHostOutcome {
@@ -81,7 +96,13 @@ function statusOutcome(result: GrazrRunResult, remote: boolean): GrazrHostOutcom
     const report = parseGrazrStatusReport(result.stdout)
     return report
       ? { kind: 'ok', report, fetchedAt: Date.now() }
-      : { kind: 'engine-error', message: 'The engine printed no status report.' }
+      : {
+          kind: 'engine-error',
+          message: translateMain(
+            'grazr.main.noStatusReport',
+            'The engine printed no status report.'
+          )
+        }
   }
   switch (failure.kind) {
     case 'not-deployed':
@@ -102,18 +123,14 @@ function actionResult(invocation: Invocation): GrazrActionResult {
   }
   const { result, remote } = invocation
   const failure = classifyGrazrOutcome(result, remote)
-  const text = `${result.stdout}\n${result.stderr}`
-  if (text.includes(FOREIGN_OWNER)) {
-    return {
-      ok: false,
-      foreignOwner: true,
-      message: failure ? failureMessage(failure) : messageOf(result.stdout)
-    }
+  if (failure === null) {
+    return { ok: true, message: messageOf(result.stdout) }
   }
-  if (failure) {
-    return { ok: false, message: failureMessage(failure) }
+  return {
+    ok: false,
+    foreignOwner: `${result.stdout}\n${result.stderr}`.includes(FOREIGN_OWNER),
+    message: failureMessage(failure)
   }
-  return { ok: true, message: messageOf(result.stdout) }
 }
 
 function parseNotices(stdout: string): GrazrNotice[] {
@@ -150,9 +167,9 @@ export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
   async function execute(
     resolved: GrazrResolvedHost,
     verb: GrazrVerb,
-    args: readonly string[],
-    timeoutMs: number
+    args: readonly string[]
   ): Promise<Invocation> {
+    const timeoutMs = VERB_TIMEOUT_MS[verb]
     switch (resolved.kind) {
       case 'unsupported-platform':
         return { kind: 'blocked', reason: 'unsupported-platform' }
@@ -183,31 +200,78 @@ export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
     verb: GrazrVerb,
     args: readonly string[]
   ): Promise<GrazrActionResult> {
-    return serial(host, async () =>
-      actionResult(await execute(deps.resolve(host), verb, args, ACTION_TIMEOUT_MS))
-    )
+    return serial(host, async () => actionResult(await execute(deps.resolve(host), verb, args)))
   }
 
+  // Why: the race bounds the whole deploy, so a hung upload cannot hold this host's queue.
   async function deploy(resolved: GrazrResolvedHost): Promise<GrazrActionResult> {
     if (resolved.kind === 'unsupported-platform' || resolved.kind === 'no-ssh-access') {
       return { ok: false, message: blockedMessage(resolved.kind) }
     }
+    const controller = new AbortController()
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const expired = new Promise<GrazrActionResult>((resolve) => {
+      timer = setTimeout(() => {
+        controller.abort()
+        resolve({
+          ok: false,
+          message: translateMain('grazr.main.deployTimedOut', 'Deploying the engine timed out.')
+        })
+      }, DEPLOY_TIMEOUT_MS)
+    })
+    try {
+      return await Promise.race([deployWithin(resolved, controller.signal), expired])
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  async function deployWithin(
+    resolved: GrazrResolvedHost,
+    signal: AbortSignal
+  ): Promise<GrazrActionResult> {
     try {
       if (resolved.kind === 'local') {
         await deps.copyDir(deps.engineRoot, join(deps.homedir(), ...ENGINE_DIR_SEGMENTS))
-        return { ok: true, message: 'Deployed the engine to this computer.' }
+        return {
+          ok: true,
+          message: translateMain(
+            'grazr.main.deployedLocal',
+            'Deployed the engine to this computer.'
+          )
+        }
+      }
+      if (resolved.kind !== 'ssh') {
+        return { ok: false, message: blockedMessage('no-ssh-access') }
       }
       const connection = deps.getConnection(resolved.sshTargetId)
       if (!connection) {
         return { ok: false, message: blockedMessage('no-ssh-access') }
       }
       // Why: the remote home is resolved first, so no path leaves the host as a literal ~.
-      const home = (await deps.execCommand(connection, 'printf %s "$HOME"')).trim()
+      const home = (
+        await deps.execCommand(connection, 'printf %s "$HOME"', { timeoutMs: DEPLOY_TIMEOUT_MS })
+      ).trim()
+      if (!home.startsWith('/')) {
+        return {
+          ok: false,
+          message: translateMain(
+            'grazr.main.homeUnresolved',
+            'Could not resolve the remote home directory.'
+          )
+        }
+      }
       const remoteEngine = `${home}/${ENGINE_DIR_SEGMENTS.join('/')}`
-      await deps.execCommand(connection, `mkdir -p ${quotePosixShell(remoteEngine)}`)
-      await connection.uploadDirectory(deps.engineRoot, remoteEngine)
-      return { ok: true, message: 'Deployed the engine to the host.' }
+      await deps.execCommand(connection, `mkdir -p ${quotePosixShell(remoteEngine)}`, {
+        timeoutMs: DEPLOY_TIMEOUT_MS
+      })
+      await connection.uploadDirectory(deps.engineRoot, remoteEngine, { signal })
+      return {
+        ok: true,
+        message: translateMain('grazr.main.deployedHost', 'Deployed the engine to the host.')
+      }
     } catch (error) {
+      // Why: a failed remote command carries its exit status and output in the message.
       return { ok: false, message: error instanceof Error ? error.message : String(error) }
     }
   }
@@ -216,7 +280,7 @@ export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
     status(host) {
       return serial(host, async (): Promise<GrazrHostStatus> => {
         const resolved = deps.resolve(host)
-        const invocation = await execute(resolved, 'status', [], STATUS_TIMEOUT_MS)
+        const invocation = await execute(resolved, 'status', [])
         const outcome: GrazrHostOutcome =
           invocation.kind === 'blocked'
             ? { kind: invocation.reason }
@@ -242,12 +306,7 @@ export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
     },
     drainNotices: (host) =>
       serial(host, async () => {
-        const invocation = await execute(
-          deps.resolve(host),
-          'notices-drain',
-          [],
-          NOTICES_TIMEOUT_MS
-        )
+        const invocation = await execute(deps.resolve(host), 'notices-drain', [])
         if (invocation.kind === 'blocked') {
           return []
         }

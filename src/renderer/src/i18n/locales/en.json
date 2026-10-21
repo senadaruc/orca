@@ -32,6 +32,26 @@
     "save": "Save",
     "inspectionOnly": "Inspection only · File row order unchanged"
   },
+  "grazr": {
+    "main": {
+      "deployedHost": "Deployed the engine to the host.",
+      "deployedLocal": "Deployed the engine to this computer.",
+      "deployTimedOut": "Deploying the engine timed out.",
+      "homeUnresolved": "Could not resolve the remote home directory.",
+      "noSshAccess": "Connect this host over SSH first.",
+      "noStatusReport": "The engine printed no status report.",
+      "notInstalled": "Grazr is not installed on this host yet.",
+      "pythonMissing": "python3 is not available: {{detail}}",
+      "thisComputer": "This computer",
+      "timedOut": "The engine timed out.",
+      "unreachable": "Could not reach the host: {{detail}}",
+      "unsupportedPlatform": "Grazr is not available on this platform."
+    },
+    "web": {
+      "desktopOnly": "Grazr runs in the desktop app on the computer that owns the host.",
+      "hostLabel": "This host"
+    }
+  },
   "osDocumentOpen": {
     "failed": "Failed to open the file."
   },

@@ -12,10 +12,14 @@ export type GrazrRunResult = {
   spawnError: string | null
 }
 
+// The narrow shape the engine needs: command execution plus the engine upload.
+export type GrazrSshConnection = Parameters<typeof execCommand>[0] &
+  Pick<SshConnection, 'uploadDirectory'>
+
 export type GrazrEngineRunner = {
   runLocal(verb: GrazrVerb, args: readonly string[], timeoutMs: number): Promise<GrazrRunResult>
   runSsh(
-    connection: SshConnection,
+    connection: GrazrSshConnection,
     verb: GrazrVerb,
     args: readonly string[],
     timeoutMs: number

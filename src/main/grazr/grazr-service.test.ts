@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { GrazrApi } from '../../shared/grazr-api-types'
 import type { GrazrHostRef } from '../../shared/grazr-host'
-import type { GrazrEngineRunner, GrazrRunResult } from './grazr-engine-runner'
+import { sshCommandExitError } from '../ssh/remote-exec/remote-exec-command'
+import type { GrazrEngineRunner, GrazrRunResult, GrazrSshConnection } from './grazr-engine-runner'
 import type { GrazrVerb } from './grazr-engine-command'
+import { resolveGrazrHost } from './grazr-host-resolver'
 import { createGrazrService, type GrazrServiceDeps } from './grazr-service'
 
 const LOCAL: GrazrHostRef = { kind: 'local' }
@@ -156,6 +158,211 @@ describe('createGrazrService enrolCommand', () => {
     expect(result).toEqual({
       command:
         'GRAZR_STATE_DIR=/Users/a/.local/state/orca-grazr GRAZR_CONFIG_DIR=/Users/a/.config/orca-grazr GRAZR_NOTIFIER=osascript python3 /Users/a/.local/share/orca-grazr/engine/grazr.py enrol'
+    })
+  })
+})
+
+const SSH: GrazrHostRef = { kind: 'ssh', sshTargetId: 'target-1' }
+const SSH_RESOLVED = { kind: 'ssh' as const, sshTargetId: 'target-1', label: 'Builder' }
+const ENGINE_DIR = '/home/ada/.local/share/orca-grazr/engine'
+
+function sshConnection(
+  uploadDirectory: GrazrSshConnection['uploadDirectory'] = () => Promise.resolve()
+): GrazrSshConnection {
+  return {
+    exec: () => Promise.reject(new Error('exec is not scripted in this test')),
+    execWithClosedStdin: () => Promise.reject(new Error('stdin exec is not scripted in this test')),
+    usesSystemSshTransport: () => false,
+    uploadDirectory
+  }
+}
+
+// Scripts $HOME and mkdir, and logs every remote command and upload in order.
+function remoteFakes(home: string, mkdir: () => Promise<string> = () => Promise.resolve('')) {
+  const log: string[] = []
+  const execCommand: GrazrServiceDeps['execCommand'] = (_connection, command) => {
+    log.push(`exec: ${command}`)
+    return command.startsWith('printf') ? Promise.resolve(home) : mkdir()
+  }
+  return { log, execCommand }
+}
+
+describe('createGrazrService timeouts', () => {
+  it('bounds each engine verb by its own timeout', async () => {
+    const timeouts: Partial<Record<GrazrVerb, number>> = {}
+    const runner: GrazrEngineRunner = {
+      async runLocal(verb, _args, timeoutMs) {
+        timeouts[verb] = timeoutMs
+        return { ...OK, stdout: '' }
+      },
+      runSsh: () => Promise.reject(new Error('not scripted'))
+    }
+    const grazr = service(runner)
+    await grazr.status(LOCAL)
+    await grazr.refresh(LOCAL)
+    await grazr.swap(LOCAL)
+    await grazr.setEnabled(LOCAL, true)
+    await grazr.install(LOCAL, false)
+    await grazr.uninstall(LOCAL)
+    await grazr.drainNotices(LOCAL)
+    expect(timeouts).toEqual({
+      status: 10_000,
+      refresh: 10_000,
+      swap: 10_000,
+      set: 10_000,
+      install: 20_000,
+      uninstall: 20_000,
+      'notices-drain': 10_000
+    })
+  })
+})
+
+describe('createGrazrService SSH hosts', () => {
+  it('passes the SSH connection to the runner for status', async () => {
+    const connection = sshConnection()
+    const seen: GrazrSshConnection[] = []
+    const runner: GrazrEngineRunner = {
+      runLocal: () => Promise.reject(new Error('local is not scripted')),
+      async runSsh(conn) {
+        seen.push(conn)
+        return { ...OK, stdout: STATUS_JSON }
+      }
+    }
+    const grazr = service(runner, {
+      resolve: () => SSH_RESOLVED,
+      getConnection: () => connection
+    })
+    const status = await grazr.status(SSH)
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toBe(connection)
+    expect(status).toMatchObject({ label: 'Builder', outcome: { kind: 'ok' } })
+  })
+
+  it('deploys by resolving $HOME, then creating the directory, then uploading', async () => {
+    const { log, execCommand } = remoteFakes('/home/ada\n')
+    const uploads: string[] = []
+    const grazr = service(scriptedRunner({}), {
+      resolve: () => SSH_RESOLVED,
+      getConnection: () =>
+        sshConnection((_local, remote) => {
+          uploads.push(remote)
+          log.push(`upload: ${remote}`)
+          return Promise.resolve()
+        }),
+      execCommand
+    })
+    const result = await grazr.deploy(SSH)
+    expect(result.ok).toBe(true)
+    expect(log).toEqual([
+      'exec: printf %s "$HOME"',
+      `exec: mkdir -p '${ENGINE_DIR}'`,
+      `upload: ${ENGINE_DIR}`
+    ])
+    expect(uploads).toEqual([ENGINE_DIR])
+  })
+
+  it('reports a failed upload as not ok', async () => {
+    const { execCommand } = remoteFakes('/home/ada')
+    const grazr = service(scriptedRunner({}), {
+      resolve: () => SSH_RESOLVED,
+      getConnection: () => sshConnection(() => Promise.reject(new Error('disk full'))),
+      execCommand
+    })
+    expect(await grazr.deploy(SSH)).toEqual({ ok: false, message: 'disk full' })
+  })
+
+  it('refuses to deploy when the remote home is not an absolute path', async () => {
+    const { log, execCommand } = remoteFakes('')
+    const grazr = service(scriptedRunner({}), {
+      resolve: () => SSH_RESOLVED,
+      getConnection: () => sshConnection(),
+      execCommand
+    })
+    expect(await grazr.deploy(SSH)).toEqual({
+      ok: false,
+      message: 'Could not resolve the remote home directory.'
+    })
+    expect(log).toEqual(['exec: printf %s "$HOME"'])
+  })
+
+  it('reports a failed mkdir with its exit status and output', async () => {
+    const { execCommand } = remoteFakes('/home/ada', () =>
+      Promise.reject(sshCommandExitError('mkdir -p', 1, '', 'Permission denied'))
+    )
+    const grazr = service(scriptedRunner({}), {
+      resolve: () => SSH_RESOLVED,
+      getConnection: () => sshConnection(),
+      execCommand
+    })
+    const result = await grazr.deploy(SSH)
+    expect(result.ok).toBe(false)
+    expect(result.message).toContain('exit 1')
+    expect(result.message).toContain('Permission denied')
+  })
+
+  it('bounds a hung deploy at sixty seconds and frees the host queue', async () => {
+    vi.useFakeTimers()
+    try {
+      const { execCommand } = remoteFakes('/home/ada')
+      let uploadSignal: AbortSignal | undefined
+      const runner: GrazrEngineRunner = {
+        runLocal: () => Promise.reject(new Error('local is not scripted')),
+        runSsh: () => Promise.resolve({ ...OK, stdout: STATUS_JSON })
+      }
+      const grazr = service(runner, {
+        resolve: () => SSH_RESOLVED,
+        getConnection: () =>
+          sshConnection((_local, _remote, options) => {
+            uploadSignal = options?.signal
+            return new Promise<void>(() => {})
+          }),
+        execCommand
+      })
+      const pending = grazr.deploy(SSH)
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(await pending).toEqual({ ok: false, message: 'Deploying the engine timed out.' })
+      expect(uploadSignal?.aborted).toBe(true)
+      const next = await grazr.status(SSH)
+      expect(next.outcome).toMatchObject({ kind: 'ok' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('returns the remote form of the enrol command', async () => {
+    const result = await service(scriptedRunner({}), {
+      resolve: () => SSH_RESOLVED
+    }).enrolCommand(SSH)
+    expect(result).toEqual({
+      command:
+        'GRAZR_STATE_DIR="$HOME/.local/state/orca-grazr" GRAZR_CONFIG_DIR="$HOME/.config/orca-grazr" GRAZR_NOTIFIER="queue" python3 "$HOME/.local/share/orca-grazr/engine/grazr.py" enrol'
+    })
+  })
+
+  it('reports no SSH access for an environment without a link and never runs the engine', async () => {
+    const calls: Call[] = []
+    const grazr = service(scriptedRunner({}, calls), {
+      resolve: (host) =>
+        resolveGrazrHost(host, {
+          listEnvironments: () => [],
+          getConnection: () => undefined,
+          platform: 'darwin'
+        })
+    })
+    const status = await grazr.status({ kind: 'environment', environmentId: 'env-1' })
+    expect(status.outcome).toEqual({ kind: 'no-ssh-access' })
+    expect(calls).toEqual([])
+  })
+})
+
+describe('createGrazrService owner refusals', () => {
+  it('does not flag a successful run that mentions another owner', async () => {
+    const result = await service(
+      scriptedRunner({ stdout: 'the status line already belongs to another grazr' })
+    ).install(LOCAL, false)
+    expect(result).toEqual({
+      ok: true,
+      message: 'the status line already belongs to another grazr'
     })
   })
 })

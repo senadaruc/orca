@@ -74,4 +74,19 @@ describe('resolveGrazrHost', () => {
       label: 'env-missing'
     })
   })
+
+  it('resolves an SSH host to its target when the connection is up', () => {
+    const ref: GrazrHostRef = { kind: 'ssh', sshTargetId: 'target-2' }
+    expect(
+      resolveGrazrHost(
+        ref,
+        deps({ getConnection: () => ({ getState: () => ({ status: 'connected' }) }) })
+      )
+    ).toEqual({ kind: 'ssh', sshTargetId: 'target-2', label: 'target-2' })
+  })
+
+  it('reports no SSH access for an SSH host whose connection is down', () => {
+    const ref: GrazrHostRef = { kind: 'ssh', sshTargetId: 'target-2' }
+    expect(resolveGrazrHost(ref, deps())).toEqual({ kind: 'no-ssh-access', label: 'target-2' })
+  })
 })
