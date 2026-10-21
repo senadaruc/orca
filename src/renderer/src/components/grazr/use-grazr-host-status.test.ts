@@ -17,7 +17,13 @@ vi.mock('sonner', () => ({ toast: toastMocks }))
 const HOST: GrazrHostRef = { kind: 'ssh', sshTargetId: 'target-1' }
 
 function statusFor(label: string): GrazrHostStatus {
-  return { host: HOST, label, outcome: { kind: 'not-deployed' } }
+  return {
+    host: HOST,
+    label,
+    outcome: { kind: 'not-deployed' },
+    engineOutdated: false,
+    bundledEngineVersion: null
+  }
 }
 
 type Api = { [K in keyof GrazrApi]: ReturnType<typeof vi.fn> }

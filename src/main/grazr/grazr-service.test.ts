@@ -48,6 +48,7 @@ function service(runner: GrazrEngineRunner, overrides: Partial<GrazrServiceDeps>
     getConnection: () => undefined,
     execCommand: () => Promise.reject(new Error('ssh is not scripted in this test')),
     engineRoot: '/app/resources/grazr/engine',
+    readEngineVersion: () => Promise.resolve('1.4.0'),
     copyDir: () => Promise.resolve(),
     homedir: () => '/Users/a',
     platform: 'darwin',
@@ -61,6 +62,32 @@ describe('createGrazrService status', () => {
     const status = await grazr.status(LOCAL)
     expect(status.label).toBe('This computer')
     expect(status.outcome).toMatchObject({ kind: 'ok', report: { installed: true } })
+  })
+
+  it('flags a deployed engine whose version differs from the bundled one', async () => {
+    const readEngineVersion = vi.fn(() => Promise.resolve('1.5.0'))
+    const grazr = service(scriptedRunner({ stdout: STATUS_JSON }), { readEngineVersion })
+    const status = await grazr.status(LOCAL)
+    expect(readEngineVersion).toHaveBeenCalledWith('/app/resources/grazr/engine')
+    expect(status).toMatchObject({ engineOutdated: true, bundledEngineVersion: '1.5.0' })
+  })
+
+  it('does not flag a deployed engine that matches the bundled version', async () => {
+    const grazr = service(scriptedRunner({ stdout: STATUS_JSON }))
+    expect(await grazr.status(LOCAL)).toMatchObject({
+      engineOutdated: false,
+      bundledEngineVersion: '1.4.0'
+    })
+  })
+
+  it('does not flag a host without the engine, whatever the bundled version', async () => {
+    const grazr = service(scriptedRunner({ code: 2, stderr: 'No such file' }), {
+      readEngineVersion: () => Promise.resolve('1.5.0')
+    })
+    expect(await grazr.status(LOCAL)).toMatchObject({
+      outcome: { kind: 'not-deployed' },
+      engineOutdated: false
+    })
   })
 
   it('reports a host without the engine file as not deployed', async () => {
@@ -157,7 +184,7 @@ describe('createGrazrService enrolCommand', () => {
     const result = await service(scriptedRunner({})).enrolCommand(LOCAL)
     expect(result).toEqual({
       command:
-        'GRAZR_STATE_DIR=/Users/a/.local/state/orca-grazr GRAZR_CONFIG_DIR=/Users/a/.config/orca-grazr GRAZR_NOTIFIER=osascript python3 /Users/a/.local/share/orca-grazr/engine/grazr.py enrol'
+        "GRAZR_STATE_DIR='/Users/a/.local/state/orca-grazr' GRAZR_CONFIG_DIR='/Users/a/.config/orca-grazr' GRAZR_NOTIFIER='osascript' python3 '/Users/a/.local/share/orca-grazr/engine/grazr.py' enrol"
     })
   })
 })

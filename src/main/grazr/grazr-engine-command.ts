@@ -78,5 +78,9 @@ export function grazrEnrolTerminalCommand(
   if (remote) {
     return [renderEnv(env, true), 'python3', `"${enginePath(REMOTE_HOME)}"`, 'enrol'].join(' ')
   }
-  return [renderEnv(env, false), 'python3', enginePath(homedir), 'enrol'].join(' ')
+  // Why: a home directory with spaces or quotes must reach the local shell as one word.
+  const localEnv = Object.entries(env)
+    .map(([key, value]) => `${key}=${quotePosixShell(value)}`)
+    .join(' ')
+  return [localEnv, 'python3', quotePosixShell(enginePath(homedir)), 'enrol'].join(' ')
 }

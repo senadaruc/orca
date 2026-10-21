@@ -42,7 +42,11 @@ const ReportSchema = z.object({
   version: z.string().nullable().catch(null),
   // Null when the engine does not say; the chip reads that as connected, as the engine always did.
   installed: z.boolean().nullable().catch(null),
-  managed_profile: z.boolean().catch(false),
+  // The engine reports the managed config path, or null; a path or true both mean a managed profile.
+  managed_profile: z
+    .union([z.string(), z.boolean(), z.null()])
+    .transform((value) => value === true || (typeof value === 'string' && value.length > 0))
+    .catch(false),
   connection: z
     .object({
       statusline: z.string().nullable().catch(null),

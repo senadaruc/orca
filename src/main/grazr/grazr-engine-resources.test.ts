@@ -1,4 +1,5 @@
-import { stat } from 'node:fs/promises'
+import { mkdtemp, rm, stat } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
@@ -35,6 +36,17 @@ describe('resolveGrazrEngineRoot', () => {
 describe('bundled grazr engine resources', () => {
   it('reads the vendored engine version from the VERSION file beside the engine', async () => {
     await expect(readGrazrEngineVersion(DEV_ENGINE_ROOT)).resolves.toBe('0.4.7+senad.6')
+  })
+
+  it('rejects with a readable message when no version file sits beside the engine', async () => {
+    const workDir = await mkdtemp(join(tmpdir(), 'grazr-resources-'))
+    try {
+      await expect(readGrazrEngineVersion(join(workDir, 'engine'))).rejects.toThrow(
+        'Could not read the bundled engine version'
+      )
+    } finally {
+      await rm(workDir, { recursive: true, force: true })
+    }
   })
 
   it('ships every engine module the rotation runtime imports', async () => {

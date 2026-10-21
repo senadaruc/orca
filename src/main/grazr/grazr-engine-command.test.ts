@@ -74,7 +74,13 @@ describe('grazrRemoteCommand', () => {
 describe('grazrEnrolTerminalCommand', () => {
   it('runs enrol locally with the desktop notifier', () => {
     expect(grazrEnrolTerminalCommand(false, HOME, 'darwin')).toBe(
-      'GRAZR_STATE_DIR=/Users/a/.local/state/orca-grazr GRAZR_CONFIG_DIR=/Users/a/.config/orca-grazr GRAZR_NOTIFIER=osascript python3 /Users/a/.local/share/orca-grazr/engine/grazr.py enrol'
+      "GRAZR_STATE_DIR='/Users/a/.local/state/orca-grazr' GRAZR_CONFIG_DIR='/Users/a/.config/orca-grazr' GRAZR_NOTIFIER='osascript' python3 '/Users/a/.local/share/orca-grazr/engine/grazr.py' enrol"
+    )
+  })
+
+  it('quotes a local home directory with a space as one word', () => {
+    expect(grazrEnrolTerminalCommand(false, '/Users/Ada Lovelace', 'darwin')).toBe(
+      "GRAZR_STATE_DIR='/Users/Ada Lovelace/.local/state/orca-grazr' GRAZR_CONFIG_DIR='/Users/Ada Lovelace/.config/orca-grazr' GRAZR_NOTIFIER='osascript' python3 '/Users/Ada Lovelace/.local/share/orca-grazr/engine/grazr.py' enrol"
     )
   })
 

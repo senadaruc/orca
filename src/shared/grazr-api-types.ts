@@ -13,6 +13,10 @@ export type GrazrHostStatus = {
   host: GrazrHostRef
   label: string
   outcome: GrazrHostOutcome
+  // True only when the host reports an engine version that differs from the bundled one.
+  engineOutdated: boolean
+  // Read only for a reachable host; null otherwise.
+  bundledEngineVersion: string | null
 }
 
 export type GrazrActionResult =

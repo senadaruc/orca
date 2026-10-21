@@ -1,18 +1,18 @@
 import { join } from 'node:path'
-import { z } from 'zod'
 import { translateMain } from '../i18n/main-i18n'
 import type {
   GrazrApi,
   GrazrActionResult,
   GrazrHostOutcome,
-  GrazrHostStatus,
-  GrazrNotice
+  GrazrHostStatus
 } from '../../shared/grazr-api-types'
 import { grazrHostKey, type GrazrHostRef } from '../../shared/grazr-host'
 import { parseGrazrStatusReport } from '../../shared/grazr-status-report'
 import { quotePosixShell } from '../../shared/shell-argument-quoting'
 import { grazrEnrolTerminalCommand, type GrazrVerb } from './grazr-engine-command'
 import { classifyGrazrOutcome, type GrazrFailure } from './grazr-engine-outcome'
+import { parseGrazrNotices } from './grazr-engine-notices'
+import { cachedBundledVersion, isEngineOutdated } from './grazr-engine-version'
 import type { GrazrEngineRunner, GrazrRunResult, GrazrSshConnection } from './grazr-engine-runner'
 import type { GrazrResolvedHost } from './grazr-host-resolver'
 
@@ -26,6 +26,7 @@ export type GrazrServiceDeps = {
     options?: { timeoutMs?: number }
   ) => Promise<string>
   engineRoot: string
+  readEngineVersion: (engineRoot: string) => Promise<string>
   copyDir: (from: string, to: string) => Promise<void>
   homedir: () => string
   platform: NodeJS.Platform
@@ -43,8 +44,6 @@ const VERB_TIMEOUT_MS: Record<GrazrVerb, number> = {
 const DEPLOY_TIMEOUT_MS = 60_000
 const FOREIGN_OWNER = 'already belongs'
 const ENGINE_DIR_SEGMENTS = ['.local', 'share', 'orca-grazr', 'engine']
-
-const NoticeSchema = z.object({ ts: z.string(), title: z.string(), body: z.string() })
 
 // A host that cannot run the engine yields no run result, only the reason it could not.
 type Invocation =
@@ -133,20 +132,10 @@ function actionResult(invocation: Invocation): GrazrActionResult {
   }
 }
 
-function parseNotices(stdout: string): GrazrNotice[] {
-  return stdout.split('\n').flatMap((line) => {
-    try {
-      const parsed = NoticeSchema.safeParse(JSON.parse(line))
-      return parsed.success ? [parsed.data] : []
-    } catch {
-      return []
-    }
-  })
-}
-
 export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
   // Why: one host's verbs run in order, so a status never reads the engine mid-swap.
   const queues = new Map<string, Promise<void>>()
+  const readBundledVersion = cachedBundledVersion(() => deps.readEngineVersion(deps.engineRoot))
 
   function serial<T>(host: GrazrHostRef, task: () => Promise<T>): Promise<T> {
     const key = grazrHostKey(host)
@@ -285,7 +274,14 @@ export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
           invocation.kind === 'blocked'
             ? { kind: invocation.reason }
             : statusOutcome(invocation.result, invocation.remote)
-        return { host, label: labelOf(resolved), outcome }
+        const bundled = outcome.kind === 'ok' ? await readBundledVersion() : null
+        return {
+          host,
+          label: labelOf(resolved),
+          outcome,
+          engineOutdated: isEngineOutdated(outcome, bundled),
+          bundledEngineVersion: bundled
+        }
       })
     },
     refresh: (host) => action(host, 'refresh', []),
@@ -311,7 +307,7 @@ export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
           return []
         }
         const { result, remote } = invocation
-        return classifyGrazrOutcome(result, remote) === null ? parseNotices(result.stdout) : []
+        return classifyGrazrOutcome(result, remote) === null ? parseGrazrNotices(result.stdout) : []
       })
   }
 }

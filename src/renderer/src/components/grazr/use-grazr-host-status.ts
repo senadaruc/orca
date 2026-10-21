@@ -35,14 +35,16 @@ export function useGrazrHostStatus(
   const refresh = useCallback(async (): Promise<void> => {
     try {
       const next = await window.api.grazr.status(host)
-      labelRef.current = next.label || label
+      labelRef.current = label || next.label
       setStatus(next)
       setAsOf(Date.now())
     } catch (error) {
       setStatus({
         host,
         label: labelRef.current,
-        outcome: { kind: 'unreachable', message: messageOf(error) }
+        outcome: { kind: 'unreachable', message: messageOf(error) },
+        engineOutdated: false,
+        bundledEngineVersion: null
       })
       setAsOf(Date.now())
     } finally {

@@ -34,6 +34,7 @@ import { GrazrAccountRows } from './GrazrAccountRows'
 import { GrazrClockRing } from './GrazrClockRing'
 import { grazrChipCopy } from './grazr-chip-copy'
 import { openGrazrEnrolTerminal } from './grazr-enrol-terminal'
+import { GrazrOutcomeBody } from './GrazrOutcomeBody'
 import { useGrazrHostStatus } from './use-grazr-host-status'
 
 const POLL_MS = 60_000
@@ -110,7 +111,7 @@ function GrazrAccountsBody({
   worktreeId: string | null
   onClose: () => void
 }): React.JSX.Element {
-  const { status, loading, busy, spinning, run, asOf } = useGrazrHostStatus(host, {
+  const { status, loading, busy, spinning, run, refresh, asOf } = useGrazrHostStatus(host, {
     pollMs: POLL_MS,
     label
   })
@@ -128,6 +129,15 @@ function GrazrAccountsBody({
   const next = report ? nextAccount(report, now) : null
   const chip = outcome ? grazrHostChip(outcome) : null
   const terminalAvailable = worktreeId !== null
+  const engineOutdated = status?.engineOutdated === true
+  // Why: outside the ok state a refresh only re-reads the status; the engine refresh verb would read every account.
+  function refreshAccounts(): void {
+    if (report) {
+      void run(() => window.api.grazr.refresh(host))
+      return
+    }
+    void refresh()
+  }
 
   async function startLogin(): Promise<void> {
     if (worktreeId === null) {
@@ -234,6 +244,20 @@ function GrazrAccountsBody({
 
       {report && view ? (
         <div className="space-y-4">
+          {engineOutdated && (
+            <div className="flex justify-center">
+              <Badge variant="outline">
+                {translate(
+                  'grazr.dialog.engineOutdated',
+                  'Engine {{installed}} · update to {{bundled}} available',
+                  {
+                    installed: report.version ?? '',
+                    bundled: status?.bundledEngineVersion ?? ''
+                  }
+                )}
+              </Badge>
+            </div>
+          )}
           {report.installed !== true && (
             <div className="space-y-2">
               <Button type="button" size="sm" disabled={busy} onClick={() => void connect()}>
@@ -276,33 +300,41 @@ function GrazrAccountsBody({
           </label>
         </div>
       ) : (
-        <OutcomeBody
+        <GrazrOutcomeBody
           outcome={outcome}
           loading={loading}
           busy={busy}
           onDeploy={() => void run(() => window.api.grazr.deploy(host))}
-          onRetry={() => void run(() => window.api.grazr.refresh(host))}
+          onRetry={() => void refresh()}
         />
       )}
 
       <DialogFooter className="sm:justify-between">
-        <div className="flex min-h-8 items-center gap-2 text-xs text-muted-foreground">
-          {asOf !== null &&
-            translate('grazr.dialog.asOf', 'as of {{time}}', {
-              time: new Date(asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            })}
+        <div className="flex min-h-8 min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          {asOf !== null && (
+            <span className="min-w-0 truncate whitespace-nowrap">
+              {translate('grazr.dialog.asOf', 'as of {{time}}', {
+                time: new Date(asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              })}
+            </span>
+          )}
           {spinning && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={busy}
-            onClick={() => void run(() => window.api.grazr.refresh(host))}
-          >
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={refreshAccounts}>
             {translate('grazr.dialog.refresh', 'Refresh')}
           </Button>
+          {engineOutdated && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => void run(() => window.api.grazr.deploy(host))}
+            >
+              {translate('grazr.dialog.updateEngine', 'Update engine…')}
+            </Button>
+          )}
           {report && (
             <>
               <Tooltip>
@@ -345,70 +377,4 @@ function GrazrAccountsBody({
       </DialogFooter>
     </>
   )
-}
-
-function OutcomeBody({
-  outcome,
-  loading,
-  busy,
-  onDeploy,
-  onRetry
-}: {
-  outcome: GrazrHostOutcome | null
-  loading: boolean
-  busy: boolean
-  onDeploy: () => void
-  onRetry: () => void
-}): React.JSX.Element | null {
-  if (outcome === null || loading) {
-    return (
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-        {translate('grazr.dialog.loading', 'Reading the status…')}
-      </p>
-    )
-  }
-  switch (outcome.kind) {
-    case 'ok':
-      return null
-    case 'not-deployed':
-      return (
-        <div className="space-y-3 text-sm">
-          <p>
-            {translate(
-              'grazr.dialog.notDeployed',
-              'The Claude Accounts engine is not on this host yet. Deploy it to start rotating accounts.'
-            )}
-          </p>
-          <Button type="button" size="sm" disabled={busy} onClick={onDeploy}>
-            {translate('grazr.dialog.deployEngine', 'Deploy engine')}
-          </Button>
-        </div>
-      )
-    case 'no-ssh-access':
-      return (
-        <p className="text-sm text-muted-foreground">
-          {translate('grazr.dialog.noSshAccess', 'Connect this host over SSH first.')}
-        </p>
-      )
-    case 'unsupported-platform':
-      return (
-        <p className="text-sm text-muted-foreground">
-          {translate(
-            'grazr.dialog.unsupportedPlatform',
-            'Claude Accounts is not available on this platform.'
-          )}
-        </p>
-      )
-    case 'engine-error':
-    case 'unreachable':
-      return (
-        <div className="space-y-3 text-sm">
-          <p className="text-destructive">{outcome.message}</p>
-          <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onRetry}>
-            {translate('grazr.dialog.retry', 'Retry')}
-          </Button>
-        </div>
-      )
-  }
 }

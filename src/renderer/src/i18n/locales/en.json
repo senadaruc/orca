@@ -53,6 +53,7 @@
       "deployEngine": "Deploy engine",
       "disconnect": "Disconnect from Claude's status line",
       "done": "Done",
+      "engineOutdated": "Engine {{installed}} · update to {{bundled}} available",
       "finishLogin": "Finish the login in the terminal, then reopen Claude Accounts",
       "loading": "Reading the status…",
       "loginTabLabel": "Claude Accounts",
@@ -72,6 +73,7 @@
       "terminalFailed": "Could not open a terminal for the login.",
       "title": "Claude Accounts",
       "unsupportedPlatform": "Claude Accounts is not available on this platform.",
+      "updateEngine": "Update engine…",
       "window": {
         "session": "5h",
         "weekly": "Week"
@@ -82,6 +84,7 @@
       "deployedHost": "Deployed the engine to the host.",
       "deployedLocal": "Deployed the engine to this computer.",
       "deployTimedOut": "Deploying the engine timed out.",
+      "engineVersionUnreadable": "Could not read the bundled engine version at {{path}}: {{detail}}",
       "homeUnresolved": "Could not resolve the remote home directory.",
       "noSshAccess": "Connect this host over SSH first.",
       "noStatusReport": "The engine printed no status report.",

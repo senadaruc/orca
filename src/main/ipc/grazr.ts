@@ -6,7 +6,7 @@ import { z } from 'zod'
 import type { GrazrApi } from '../../shared/grazr-api-types'
 import { GrazrHostRefSchema } from '../../shared/grazr-host'
 import { createGrazrEngineRunner } from '../grazr/grazr-engine-runner'
-import { resolveGrazrEngineRoot } from '../grazr/grazr-engine-resources'
+import { readGrazrEngineVersion, resolveGrazrEngineRoot } from '../grazr/grazr-engine-resources'
 import { resolveGrazrHost } from '../grazr/grazr-host-resolver'
 import { createGrazrService } from '../grazr/grazr-service'
 import { execCommand } from '../ssh/remote-exec/remote-exec-command'
@@ -42,6 +42,7 @@ export function createAppGrazrService(): GrazrApi {
       resourcesPath: process.resourcesPath,
       appPath: app.getAppPath()
     }),
+    readEngineVersion: readGrazrEngineVersion,
     copyDir: (from, to) => cp(from, to, { recursive: true, force: true }),
     homedir,
     platform: process.platform

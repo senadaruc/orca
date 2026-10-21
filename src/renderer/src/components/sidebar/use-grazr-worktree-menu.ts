@@ -114,7 +114,13 @@ export function useGrazrWorktreeMenu(worktreeId: string): {
     try {
       setStatus(await window.api.grazr.status(host))
     } catch (error) {
-      setStatus({ host, label, outcome: { kind: 'unreachable', message: messageOf(error) } })
+      setStatus({
+        host,
+        label,
+        outcome: { kind: 'unreachable', message: messageOf(error) },
+        engineOutdated: false,
+        bundledEngineVersion: null
+      })
     }
   }, [host, label])
 

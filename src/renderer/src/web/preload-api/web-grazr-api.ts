@@ -19,7 +19,9 @@ export function createGrazrApi(): PreloadApi['grazr'] {
       Promise.resolve({
         host,
         label: translate('grazr.web.hostLabel', 'This host'),
-        outcome: { kind: 'unsupported-platform' }
+        outcome: { kind: 'unsupported-platform' },
+        engineOutdated: false,
+        bundledEngineVersion: null
       }),
     refresh: rejectDesktopOnly,
     swap: rejectDesktopOnly,

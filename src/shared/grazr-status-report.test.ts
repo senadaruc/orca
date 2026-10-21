@@ -22,6 +22,17 @@ describe('parseGrazrStatusReport', () => {
     })
   })
 
+  it('reads a managed profile given as a config path, a flag, or null as a boolean', () => {
+    expect(
+      parseGrazrStatusReport('{"managed_profile": "/Users/a/.config/orca-grazr/managed.json"}')
+        ?.managed_profile
+    ).toBe(true)
+    expect(parseGrazrStatusReport('{"managed_profile": true}')?.managed_profile).toBe(true)
+    expect(parseGrazrStatusReport('{"managed_profile": ""}')?.managed_profile).toBe(false)
+    expect(parseGrazrStatusReport('{"managed_profile": null}')?.managed_profile).toBe(false)
+    expect(parseGrazrStatusReport('{"managed_profile": 3}')?.managed_profile).toBe(false)
+  })
+
   it('keeps a reported installed flag and leaves an unreported one null', () => {
     expect(parseGrazrStatusReport('{"installed": false}')?.installed).toBe(false)
     expect(parseGrazrStatusReport('{"installed": true}')?.installed).toBe(true)
