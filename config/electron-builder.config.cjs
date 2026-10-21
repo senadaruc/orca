@@ -140,6 +140,12 @@ const bundledPluginResources = {
   from: 'resources/plugins/launch',
   to: 'plugins/launch'
 }
+// Why: the grazr engine is a Python tree the packaged app runs from disk, so it must be a real
+// directory outside app.asar.
+const grazrEngineResource = {
+  from: 'resources/grazr',
+  to: 'grazr'
+}
 // Why: the main bundle, packaged CLI, SSH paths, and speech worker all execute
 // from package directories where pnpm's symlink farm is absent. Copy the exact
 // runtime dependency closure to Resources/node_modules so bare require() calls
@@ -157,6 +163,7 @@ const commonExtraResources = [
   orcadTemplateNodeModulesExtraResource,
   ...bundledRipgrepExtraResources,
   bundledPluginResources,
+  grazrEngineResource,
   skillFreshnessResources,
   nativeChatVisualsResource,
   emojiShortcodeDatasetResource
@@ -324,6 +331,7 @@ module.exports = {
     // Why: bundled plugins ship via extraResources to resources/plugins/launch;
     // packing the source tree into app.asar would duplicate those exact bytes.
     '!resources/plugins/launch/**',
+    '!resources/grazr/**',
     // Why: speech packages are copied selectively through the platform
     // extraResources entry below; keeping them in app.asar would ship every
     // native variant (and duplicate the selected one).
