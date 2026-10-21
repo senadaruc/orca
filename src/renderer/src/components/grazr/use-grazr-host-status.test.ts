@@ -44,7 +44,7 @@ const roots: Root[] = []
 function mount(pollMs: number): { current: Hook | null } {
   const result: { current: Hook | null } = { current: null }
   function Probe(): null {
-    result.current = useGrazrHostStatus(HOST, { pollMs })
+    result.current = useGrazrHostStatus(HOST, { pollMs, label: 'Build box' })
     return null
   }
   const root = createRoot(document.createElement('div'))

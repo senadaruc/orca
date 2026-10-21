@@ -8,6 +8,10 @@ import { ringSegments } from './grazr-ring-geometry'
 
 const RING = { radius: 80, gapDeg: 4 }
 const NAME_MAX = 22
+const BAND_WIDTH = 14
+// Why: the next segment is an outline, so its stroke is a third of the band and dashed.
+const OUTLINE_WIDTH = 5
+const OUTLINE_DASH = '8 4'
 
 // Why: stroke-current and fill-current take these tokens, so the ring follows the theme.
 const SEGMENT_CLASS: Record<GrazrSegmentState, string> = {
@@ -43,14 +47,15 @@ export function GrazrClockRing({
           <path
             d={path.d}
             fill="none"
-            strokeWidth={14}
+            strokeWidth={path.state === 'next' ? OUTLINE_WIDTH : BAND_WIDTH}
+            strokeDasharray={path.state === 'next' ? OUTLINE_DASH : undefined}
             className={`stroke-current ${SEGMENT_CLASS[path.state]}`}
           />
           {path.fillD && (
             <path
               d={path.fillD}
               fill="none"
-              strokeWidth={14}
+              strokeWidth={BAND_WIDTH}
               className="stroke-current text-foreground"
             />
           )}

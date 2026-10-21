@@ -37,7 +37,6 @@ import { openGrazrEnrolTerminal } from './grazr-enrol-terminal'
 import { useGrazrHostStatus } from './use-grazr-host-status'
 
 const POLL_MS = 60_000
-const LOGIN_TAB_LABEL = 'Claude Accounts'
 
 type Target = { host: GrazrHostRef; label: string; worktreeId: string | null }
 
@@ -109,11 +108,12 @@ function GrazrAccountsBody({
   onClose: () => void
 }): React.JSX.Element {
   const { status, loading, busy, spinning, run, asOf } = useGrazrHostStatus(host, {
-    pollMs: POLL_MS
+    pollMs: POLL_MS,
+    label
   })
   const [windowView, setWindowView] = useState<GrazrWindowView>('session')
-  // Why: a refused install names the foreign owner, so the next Connect must take the line over.
-  const [takeOver, setTakeOver] = useState(false)
+  // Why: only a refusal naming a foreign owner switches Connect to a takeover, and the refusal's message is shown inline.
+  const [foreignRefusal, setForeignRefusal] = useState<string | null>(null)
   const now = useMemo(() => new Date(asOf ?? 0), [asOf])
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
   const outcome: GrazrHostOutcome | null = status?.outcome ?? null
@@ -138,7 +138,7 @@ function GrazrAccountsBody({
       const opened = openGrazrEnrolTerminal({
         worktreeId,
         command: enrol.command,
-        label: LOGIN_TAB_LABEL
+        label: translate('grazr.dialog.loginTabLabel', 'Claude Accounts')
       })
       return opened
         ? { ok: true, message: '' }
@@ -162,11 +162,19 @@ function GrazrAccountsBody({
   }
 
   async function connect(): Promise<void> {
+    const takeOver = foreignRefusal !== null
     const result = await run(() => window.api.grazr.install(host, takeOver))
-    if (result && !result.ok && result.foreignOwner) {
-      setTakeOver(true)
+    if (result?.ok) {
+      setForeignRefusal(null)
+    } else if (result && result.foreignOwner) {
+      setForeignRefusal(result.message)
     }
   }
+
+  const connectLabel =
+    foreignRefusal !== null
+      ? translate('grazr.dialog.takeOver', 'Take over the status line')
+      : translate('grazr.dialog.connect', "Connect to Claude's status line")
 
   const subtitle =
     report !== null
@@ -196,11 +204,9 @@ function GrazrAccountsBody({
                 </Badge>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {report.installed === false ? (
+                {report.installed !== true ? (
                   <DropdownMenuItem disabled={busy} onSelect={() => void connect()}>
-                    {takeOver || chip.kind === 'foreign'
-                      ? translate('grazr.dialog.takeOver', 'Take over the status line')
-                      : translate('grazr.dialog.connect', "Connect to Claude's status line")}
+                    {connectLabel}
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem
@@ -225,6 +231,16 @@ function GrazrAccountsBody({
 
       {report && view ? (
         <div className="space-y-4">
+          {report.installed !== true && (
+            <div className="space-y-2">
+              <Button type="button" size="sm" disabled={busy} onClick={() => void connect()}>
+                {connectLabel}
+              </Button>
+              {foreignRefusal !== null && (
+                <p className="text-sm text-destructive">{foreignRefusal}</p>
+              )}
+            </div>
+          )}
           <div className="flex justify-center">
             <SettingsSegmentedControl<GrazrWindowView>
               ariaLabel={translate('grazr.dialog.windowLabel', 'Usage window')}

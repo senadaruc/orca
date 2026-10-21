@@ -13,7 +13,7 @@ function messageOf(error: unknown): string {
 
 export function useGrazrHostStatus(
   host: GrazrHostRef,
-  { pollMs }: { pollMs: number }
+  { pollMs, label }: { pollMs: number; label: string }
 ): {
   status: GrazrHostStatus | null
   loading: boolean
@@ -30,12 +30,12 @@ export function useGrazrHostStatus(
   const [spinning, setSpinning] = useState(false)
   const [asOf, setAsOf] = useState<number | null>(null)
   const busyRef = useRef(false)
-  const labelRef = useRef('')
+  const labelRef = useRef(label)
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
       const next = await window.api.grazr.status(host)
-      labelRef.current = next.label
+      labelRef.current = next.label || label
       setStatus(next)
       setAsOf(Date.now())
     } catch (error) {
@@ -48,7 +48,7 @@ export function useGrazrHostStatus(
     } finally {
       setLoading(false)
     }
-  }, [host])
+  }, [host, label])
 
   useEffect(() => {
     void refresh()
@@ -71,7 +71,7 @@ export function useGrazrHostStatus(
         }
         const notices = await window.api.grazr.drainNotices(host)
         const title = translate('grazr.dialog.noticeTitle', 'grazr · {{label}}', {
-          label: labelRef.current
+          label: labelRef.current || label
         })
         for (const notice of notices) {
           toast.message(title, { description: [notice.title, notice.body].join('\n') })
@@ -88,7 +88,7 @@ export function useGrazrHostStatus(
         setSpinning(false)
       }
     },
-    [host, refresh]
+    [host, label, refresh]
   )
 
   return { status, loading, busy, spinning, run, refresh, asOf }
