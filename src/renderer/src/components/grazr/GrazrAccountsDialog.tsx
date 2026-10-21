@@ -231,8 +231,8 @@ function GrazrAccountsBody({
               value={windowView}
               onChange={setWindowView}
               options={[
-                { value: 'session', label: translate('grazr.dialog.window.session', '5h') },
-                { value: 'weekly', label: translate('grazr.dialog.window.weekly', 'Week') }
+                { value: 'weekly', label: translate('grazr.dialog.window.weekly', 'Week') },
+                { value: 'session', label: translate('grazr.dialog.window.session', '5h') }
               ]}
             />
           </div>
