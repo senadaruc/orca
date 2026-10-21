@@ -1,5 +1,5 @@
 import { translate } from '@/i18n/i18n'
-import type { GrazrHostChipKind } from '../../../../shared/grazr-rotation-view'
+import type { GrazrHostChipKind } from '../../../../shared/grazr-host-chip'
 
 export type GrazrChipTone = 'default' | 'secondary' | 'outline'
 

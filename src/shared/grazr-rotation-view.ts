@@ -1,4 +1,3 @@
-import type { GrazrHostOutcome } from './grazr-api-types'
 import type {
   GrazrSnapshotEntry,
   GrazrStatusAccount,
@@ -26,7 +25,15 @@ export type GrazrRowStatus =
   | 'ok'
 export type GrazrSegmentState = 'active' | 'next' | 'spent' | 'blocked' | 'ok' | 'unknown'
 
-export type GrazrRotationCentre = { name: string; percentText: string; hint: string; next: string }
+// Why: the centre percentage takes the colour of the active account's state.
+export type GrazrCentreTone = 'fine' | 'warning' | 'spent' | 'blocked' | 'none'
+export type GrazrRotationCentre = {
+  name: string
+  percentText: string
+  hint: string
+  next: string
+  tone: GrazrCentreTone
+}
 export type GrazrRotationRow = {
   index: number
   name: string
@@ -49,19 +56,6 @@ export type GrazrRotationView = {
   rows: GrazrRotationRow[]
   segments: GrazrRingSegment[]
 }
-
-export type GrazrHostChipKind =
-  | 'on'
-  | 'off'
-  | 'not-connected'
-  | 'foreign'
-  | 'managed'
-  | 'not-deployed'
-  | 'unreachable'
-  | 'no-ssh-access'
-  | 'unsupported-platform'
-  | 'engine-error'
-export type GrazrHostChip = { kind: GrazrHostChipKind; label: string }
 
 function isMissing(entry: GrazrAccountEntry): entry is GrazrMissingAccount {
   return 'missing' in entry
@@ -250,22 +244,26 @@ export function centre(
   const next = nextAccount(report, now)
   const nextLabel = `next ▸ ${next !== null ? next.name : 'none'}`
   if (active === null) {
-    return { name: '—', percentText: '—', hint: 'no active login', next: nextLabel }
+    return { name: '—', percentText: '—', hint: 'no active login', next: nextLabel, tone: 'none' }
   }
   const live = windowOf(active.snapshot, view, now)
   const percentText = live ? `${Math.round(live.remaining)}% left` : '—'
   const reason = blockedReason(active)
   let hint = 'fine'
+  let tone: GrazrCentreTone = 'fine'
   if (reason) {
     hint = `blocked: ${reason}`
+    tone = 'blocked'
   } else if (
     shortfallOf(active.snapshot, report.settings.thresholds, now, report.settings.model_limits)
   ) {
     hint = 'below the threshold, swaps next turn'
+    tone = live && live.remaining <= 0 ? 'spent' : 'warning'
   } else if (!live) {
     hint = 'not read yet'
+    tone = 'none'
   }
-  return { name: active.name, percentText, hint, next: nextLabel }
+  return { name: active.name, percentText, hint, next: nextLabel, tone }
 }
 
 const SEGMENT_STATE: Record<GrazrRowStatus, GrazrSegmentState> = {
@@ -307,38 +305,4 @@ export function buildGrazrRotationView(
     segments.push({ index, name: account.name, remaining, state: SEGMENT_STATE[state.status] })
   })
   return { centre: centre(report, view, { now }), rows, segments }
-}
-
-// Failures are checked first; a chip can only be one state, so a conflict outranks the on/off state.
-// A host whose status line or hook is disconnected reports installed false, and nothing rotates there whatever the setting says.
-export function grazrHostChip(outcome: GrazrHostOutcome): GrazrHostChip {
-  switch (outcome.kind) {
-    case 'not-deployed':
-      return { kind: 'not-deployed', label: 'engine not installed' }
-    case 'no-ssh-access':
-      return { kind: 'no-ssh-access', label: 'no SSH access' }
-    case 'unsupported-platform':
-      return { kind: 'unsupported-platform', label: 'unsupported platform' }
-    case 'unreachable':
-      return { kind: 'unreachable', label: 'unreachable' }
-    case 'engine-error':
-      return { kind: 'engine-error', label: 'engine error' }
-    case 'ok':
-      return reportChip(outcome.report)
-  }
-}
-
-function reportChip(report: GrazrStatusReport): GrazrHostChip {
-  if (report.connection.foreign?.statusline) {
-    return { kind: 'foreign', label: 'another grazr owns the status line' }
-  }
-  if (report.managed_profile) {
-    return { kind: 'managed', label: 'managed profile' }
-  }
-  if (report.installed === false) {
-    return { kind: 'not-connected', label: 'not connected' }
-  }
-  return report.settings.enabled
-    ? { kind: 'on', label: 'rotation on' }
-    : { kind: 'off', label: 'rotation off' }
 }

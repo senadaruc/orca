@@ -8,17 +8,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
-import type { GrazrRotationRow, GrazrRowStatus } from '../../../../shared/grazr-rotation-view'
-
-const DOT_CLASS: Record<GrazrRowStatus, string> = {
-  active: 'bg-foreground',
-  next: 'bg-foreground/40',
-  spent: 'bg-muted-foreground/20',
-  blocked: 'bg-destructive',
-  'not-enrolled': 'bg-muted-foreground/20',
-  unread: 'bg-muted-foreground/20',
-  ok: 'bg-muted-foreground/40'
-}
+import type { GrazrRotationRow } from '../../../../shared/grazr-rotation-view'
+import { ACCOUNT_OK_CLASS, ROW_DOT_CLASS, ROW_LABEL_CLASS } from './grazr-ring-colors'
 
 export function GrazrAccountRows({
   rows,
@@ -46,10 +37,10 @@ export function GrazrAccountRows({
             </span>
             <span
               aria-hidden="true"
-              className={cn('size-2 shrink-0 rounded-full', DOT_CLASS[row.status])}
+              className={cn('size-2 shrink-0 rounded-full', ROW_DOT_CLASS[row.status])}
             />
             <div className="min-w-0 flex-1">
-              <div className="truncate">{row.name}</div>
+              <div className={cn('truncate', row.isActive && ACCOUNT_OK_CLASS)}>{row.name}</div>
               {row.email && (
                 <div className="truncate text-xs text-muted-foreground">{row.email}</div>
               )}
@@ -58,7 +49,9 @@ export function GrazrAccountRows({
               {row.percent === null ? '—' : `${row.percent}%`}
             </span>
             {row.label && (
-              <span className="max-w-[10rem] shrink truncate text-xs text-muted-foreground">
+              <span
+                className={cn('max-w-[10rem] shrink truncate text-xs', ROW_LABEL_CLASS[row.status])}
+              >
                 {row.label}
               </span>
             )}

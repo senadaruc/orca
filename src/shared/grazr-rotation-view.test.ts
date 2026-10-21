@@ -3,13 +3,13 @@ import { parseGrazrStatusReport, type GrazrStatusReport } from './grazr-status-r
 import {
   buildGrazrRotationView,
   centre,
-  grazrHostChip,
   nextAccount,
   orderedAccounts,
   rowState,
   windowOf,
   type GrazrRotationRow
 } from './grazr-rotation-view'
+import { grazrHostChip } from './grazr-host-chip'
 import type { GrazrHostOutcome } from './grazr-api-types'
 
 const ZONE = 'Europe/Zurich'
@@ -461,7 +461,8 @@ describe('centre', () => {
       name: 'a',
       percentText: '42% left',
       hint: 'fine',
-      next: 'next ▸ b'
+      next: 'next ▸ b',
+      tone: 'fine'
     })
     expect(centre(report, 'weekly', { now: NOW }).percentText).toBe('70% left')
 
@@ -471,6 +472,14 @@ describe('centre', () => {
       weekly(70, '2026-10-27T09:00:00+02:00')
     ]
     expect(centre(low, 'session', { now: NOW }).hint).toBe('below the threshold, swaps next turn')
+    expect(centre(low, 'session', { now: NOW }).tone).toBe('warning')
+
+    const spent = fixture()
+    accountNamed(spent, 'a').snapshot = [
+      session(0, '2026-10-21T18:00:00+02:00'),
+      weekly(70, '2026-10-27T09:00:00+02:00')
+    ]
+    expect(centre(spent, 'session', { now: NOW }).tone).toBe('spent')
 
     // The hint looks at both windows: a weekly shortfall shows on the 5h view too.
     const weeklyLow = fixture()
@@ -488,7 +497,8 @@ describe('centre', () => {
       name: '—',
       percentText: '—',
       hint: 'no active login',
-      next: 'next ▸ none'
+      next: 'next ▸ none',
+      tone: 'none'
     })
   })
 })

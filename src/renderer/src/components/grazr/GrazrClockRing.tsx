@@ -1,10 +1,12 @@
 import { translate } from '@/i18n/i18n'
-import type {
-  GrazrRingSegment,
-  GrazrRotationCentre,
-  GrazrSegmentState
-} from '../../../../shared/grazr-rotation-view'
+import type { GrazrRingSegment, GrazrRotationCentre } from '../../../../shared/grazr-rotation-view'
 import { ringSegments } from './grazr-ring-geometry'
+import {
+  ACCOUNT_NEXT_CLASS,
+  CENTRE_TONE_CLASS,
+  RING_FILL_CLASS,
+  SEGMENT_CLASS
+} from './grazr-ring-colors'
 
 const RING = { radius: 80, gapDeg: 4 }
 const NAME_MAX = 22
@@ -12,16 +14,6 @@ const BAND_WIDTH = 14
 // Why: the next segment is an outline, so its stroke is a third of the band and dashed.
 const OUTLINE_WIDTH = 5
 const OUTLINE_DASH = '8 4'
-
-// Why: stroke-current and fill-current take these tokens, so the ring follows the theme.
-const SEGMENT_CLASS: Record<GrazrSegmentState, string> = {
-  ok: 'text-muted-foreground/40',
-  active: 'text-muted-foreground/40',
-  next: 'text-foreground',
-  spent: 'text-muted-foreground/20',
-  blocked: 'text-destructive',
-  unknown: 'text-muted-foreground/20'
-}
 
 function shortName(name: string): string {
   return name.length > NAME_MAX ? `${name.slice(0, NAME_MAX - 1)}…` : name
@@ -56,7 +48,7 @@ export function GrazrClockRing({
               d={path.fillD}
               fill="none"
               strokeWidth={BAND_WIDTH}
-              className="stroke-current text-foreground"
+              className={`stroke-current ${RING_FILL_CLASS}`}
             />
           )}
           <text
@@ -86,7 +78,7 @@ export function GrazrClockRing({
         y={124}
         textAnchor="middle"
         fontSize={20}
-        className="fill-current text-foreground"
+        className={`fill-current ${CENTRE_TONE_CLASS[centre.tone]}`}
       >
         {centre.percentText}
       </text>
@@ -104,7 +96,7 @@ export function GrazrClockRing({
         y={166}
         textAnchor="middle"
         fontSize={10}
-        className="fill-current text-muted-foreground"
+        className={`fill-current ${ACCOUNT_NEXT_CLASS}`}
       >
         {centre.next}
       </text>

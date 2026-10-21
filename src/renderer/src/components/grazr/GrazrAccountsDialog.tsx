@@ -24,11 +24,11 @@ import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
 import {
   buildGrazrRotationView,
-  grazrHostChip,
   nextAccount,
   type GrazrWindowView
 } from '../../../../shared/grazr-rotation-view'
 import type { GrazrHostOutcome } from '../../../../shared/grazr-api-types'
+import { grazrHostChip } from '../../../../shared/grazr-host-chip'
 import { GrazrHostRefSchema, grazrHostKey, type GrazrHostRef } from '../../../../shared/grazr-host'
 import { GrazrAccountRows } from './GrazrAccountRows'
 import { GrazrClockRing } from './GrazrClockRing'
@@ -310,9 +310,9 @@ function GrazrAccountsBody({
       )}
 
       <DialogFooter className="sm:justify-between">
-        <div className="flex min-h-8 min-w-0 items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex min-h-8 shrink-0 items-center gap-2 text-xs text-muted-foreground">
           {asOf !== null && (
-            <span className="min-w-0 truncate whitespace-nowrap">
+            <span className="shrink-0 whitespace-nowrap">
               {translate('grazr.dialog.asOf', 'as of {{time}}', {
                 time: new Date(asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               })}
@@ -320,7 +320,7 @@ function GrazrAccountsBody({
           )}
           {spinning && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
         </div>
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-wrap justify-end gap-2">
           <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={refreshAccounts}>
             {translate('grazr.dialog.refresh', 'Refresh')}
           </Button>
