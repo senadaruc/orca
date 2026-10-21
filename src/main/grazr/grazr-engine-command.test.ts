@@ -25,10 +25,10 @@ describe('grazrEngineEnv', () => {
     })
   })
 
-  it('keeps the literal tilde for remote hosts and always queues', () => {
+  it('keeps a literal $HOME for remote hosts and always queues', () => {
     expect(grazrEngineEnv({ remote: true, platform: 'darwin', homedir: HOME })).toEqual({
-      GRAZR_STATE_DIR: '~/.local/state/orca-grazr',
-      GRAZR_CONFIG_DIR: '~/.config/orca-grazr',
+      GRAZR_STATE_DIR: '$HOME/.local/state/orca-grazr',
+      GRAZR_CONFIG_DIR: '$HOME/.config/orca-grazr',
       GRAZR_NOTIFIER: 'queue'
     })
   })
@@ -60,13 +60,13 @@ describe('grazrLocalInvocation', () => {
 describe('grazrRemoteCommand', () => {
   it('quotes the swap account name byte for byte', () => {
     expect(grazrRemoteCommand('swap', ["o'brien $x"])).toBe(
-      `env GRAZR_STATE_DIR=~/.local/state/orca-grazr GRAZR_CONFIG_DIR=~/.config/orca-grazr GRAZR_NOTIFIER=queue python3 ~/.local/share/orca-grazr/engine/grazr.py swap 'o'\\''brien $x'`
+      `env GRAZR_STATE_DIR="$HOME/.local/state/orca-grazr" GRAZR_CONFIG_DIR="$HOME/.config/orca-grazr" GRAZR_NOTIFIER="queue" python3 "$HOME/.local/share/orca-grazr/engine/grazr.py" swap 'o'\\''brien $x'`
     )
   })
 
   it('passes --json to status as a quoted argument', () => {
     expect(grazrRemoteCommand('status', [])).toBe(
-      `env GRAZR_STATE_DIR=~/.local/state/orca-grazr GRAZR_CONFIG_DIR=~/.config/orca-grazr GRAZR_NOTIFIER=queue python3 ~/.local/share/orca-grazr/engine/grazr.py status '--json'`
+      `env GRAZR_STATE_DIR="$HOME/.local/state/orca-grazr" GRAZR_CONFIG_DIR="$HOME/.config/orca-grazr" GRAZR_NOTIFIER="queue" python3 "$HOME/.local/share/orca-grazr/engine/grazr.py" status '--json'`
     )
   })
 })
@@ -78,9 +78,9 @@ describe('grazrEnrolTerminalCommand', () => {
     )
   })
 
-  it('runs enrol on a remote host with tilde paths and the queue notifier', () => {
+  it('runs enrol on a remote host with $HOME paths and the queue notifier', () => {
     expect(grazrEnrolTerminalCommand(true, HOME, 'darwin')).toBe(
-      'GRAZR_STATE_DIR=~/.local/state/orca-grazr GRAZR_CONFIG_DIR=~/.config/orca-grazr GRAZR_NOTIFIER=queue python3 ~/.local/share/orca-grazr/engine/grazr.py enrol'
+      'GRAZR_STATE_DIR="$HOME/.local/state/orca-grazr" GRAZR_CONFIG_DIR="$HOME/.config/orca-grazr" GRAZR_NOTIFIER="queue" python3 "$HOME/.local/share/orca-grazr/engine/grazr.py" enrol'
     )
   })
 })

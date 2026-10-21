@@ -32,6 +32,10 @@ export type GrazrEngineRunnerDeps = {
 const describeError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error)
 
+// Drops the echoed command, which carries the account name, and keeps only the remote output.
+const EXIT_ERROR_PREFIX = /^Command ".*?" failed \(exit -?\d+\): /
+const commandOutput = (message: string): string => message.replace(EXIT_ERROR_PREFIX, '')
+
 const NO_OUTPUT: Pick<GrazrRunResult, 'stdout' | 'stderr' | 'timedOut' | 'spawnError'> = {
   stdout: '',
   stderr: '',
@@ -74,7 +78,12 @@ export function createGrazrEngineRunner(deps: GrazrEngineRunnerDeps): GrazrEngin
           return { ...NO_OUTPUT, code: null, timedOut: true }
         }
         if (isSshCommandExitError(error)) {
-          return { ...NO_OUTPUT, code: error.exitCode, stdout: error.stdout, stderr: error.message }
+          return {
+            ...NO_OUTPUT,
+            code: error.exitCode,
+            stdout: error.stdout,
+            stderr: commandOutput(error.message)
+          }
         }
         return { ...NO_OUTPUT, code: null, spawnError: describeError(error) }
       }

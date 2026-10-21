@@ -2,6 +2,7 @@ import type { ProcessResult, ProcessSpec } from '@orca/process-host/process-spec
 import { describe, expect, it } from 'vitest'
 import { SSH_EXEC_TIMEOUT_CODE, sshCommandExitError } from '../ssh/remote-exec/remote-exec-command'
 import { SshConnection } from '../ssh/connection/ssh-connection'
+import { classifyGrazrOutcome } from './grazr-engine-outcome'
 import { createGrazrEngineRunner } from './grazr-engine-runner'
 
 const HOME = '/Users/a'
@@ -90,7 +91,7 @@ describe('createGrazrEngineRunner SSH runs', () => {
     })
     expect(calls).toEqual([
       {
-        command: `env GRAZR_STATE_DIR=~/.local/state/orca-grazr GRAZR_CONFIG_DIR=~/.config/orca-grazr GRAZR_NOTIFIER=queue python3 ~/.local/share/orca-grazr/engine/grazr.py status '--json'`,
+        command: `env GRAZR_STATE_DIR="$HOME/.local/state/orca-grazr" GRAZR_CONFIG_DIR="$HOME/.config/orca-grazr" GRAZR_NOTIFIER="queue" python3 "$HOME/.local/share/orca-grazr/engine/grazr.py" status '--json'`,
         timeoutMs: 8000
       }
     ])
@@ -109,7 +110,7 @@ describe('createGrazrEngineRunner SSH runs', () => {
 
     expect(result.code).toBe(1)
     expect(result.stdout).toBe('grazr: no such account\n')
-    expect(result.stderr).toContain('exit 1')
+    expect(result.stderr).toBe('grazr: no such account')
     expect(result.timedOut).toBe(false)
     expect(result.spawnError).toBeNull()
   })
@@ -147,5 +148,53 @@ describe('createGrazrEngineRunner SSH runs', () => {
       timedOut: false,
       spawnError: 'channel closed'
     })
+  })
+
+  it('keeps the account name out of an unreachable-host detail', async () => {
+    const runner = createGrazrEngineRunner({
+      runProcess: () => Promise.reject(new Error('not used')),
+      execCommand: (_conn, command) =>
+        Promise.reject(
+          sshCommandExitError(
+            command,
+            255,
+            'ssh: connect to host cloud-dev port 22: Operation timed out\n'
+          )
+        ),
+      homedir: () => HOME,
+      platform: 'darwin'
+    })
+
+    const failure = classifyGrazrOutcome(
+      await runner.runSsh(connection, 'swap', ["o'brien"], 8000),
+      true
+    )
+
+    expect(failure).toEqual({
+      kind: 'unreachable',
+      detail: 'ssh: connect to host cloud-dev port 22: Operation timed out'
+    })
+  })
+
+  it('keeps the command echo out of a not-deployed detail', async () => {
+    const runner = createGrazrEngineRunner({
+      runProcess: () => Promise.reject(new Error('not used')),
+      execCommand: (_conn, command) =>
+        Promise.reject(
+          sshCommandExitError(
+            command,
+            2,
+            "python3: can't open file '/home/a/.local/share/orca-grazr/engine/grazr.py': [Errno 2] No such file or directory\n"
+          )
+        ),
+      homedir: () => HOME,
+      platform: 'darwin'
+    })
+
+    const failure = classifyGrazrOutcome(await runner.runSsh(connection, 'status', [], 8000), true)
+
+    expect(failure?.kind).toBe('not-deployed')
+    expect(failure?.detail).not.toContain('GRAZR_STATE_DIR')
+    expect(failure?.detail).not.toContain('Command "')
   })
 })
