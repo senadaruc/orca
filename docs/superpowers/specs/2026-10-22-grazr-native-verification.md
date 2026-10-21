@@ -17,9 +17,10 @@ Plan: `docs/superpowers/plans/2026-10-22-grazr-native.md`.
 
 ## Dev app (`pnpm run dev`, `orca-dev` user data, CDP 9437)
 
-Driven over CDP with Playwright from inside the repo
-(`.superpowers/sdd/2026-10-22-grazr-native/cdp-grazr-check.mjs` and
-`cdp-grazr-menu-check.mjs`, both git-ignored scratch).
+Driven over CDP with Playwright from inside the repo (throwaway scripts, not
+committed: connect to 127.0.0.1:9437, click the `Usage` button, click the
+`Claude Accounts (rotation)` row, screenshot; right-click a worktree row, hover
+`grazr`, screenshot).
 
 ### Usage popover → Claude Accounts dialog
 
@@ -53,6 +54,33 @@ Driven over CDP with Playwright from inside the repo
 
 - In the dialog footer "as of 01:45 AM" wraps to two lines and "Done" drops to a
   second row at the default dialog width.
+
+## Final review and fix round (commits c0a332d1, 9e1e073f, 29ea31eb, 1815d235)
+
+Whole-branch review: 0 Critical, 2 Important, 10 Minor. Fixed in one round and
+re-reviewed clean:
+
+- Usage popover passes the focused worktree to the dialog only when it lives on
+  the dialog's host (`grazr-enrol-worktree.ts`, tested for direct SSH).
+- Deployed engines can be updated: `engineOutdated` / `bundledEngineVersion` on
+  the status, `Update engine…` footer button runs deploy; a missing bundled
+  VERSION file fails status with the path in the message.
+- `managed_profile` accepts the path string the engine emits; non-ok Retry and
+  Refresh re-fetch status instead of calling the engine `refresh` verb; notice
+  toasts use the dialog's host label; local enrol command paths are quoted.
+- Ring, centre and rows are coloured by state with `main.css` tokens
+  (`status-success`, `status-warning`, `destructive`, `agent-question`): green
+  for accounts with tokens (active brightest), red for spent or blocked, muted
+  for parked or unknown, accent for next. Centre text is capped at 60% of the
+  ring; footer timestamp on its own line, buttons in one row; dialog
+  `sm:max-w-2xl`.
+- Verified over CDP in the dev app at 1815d235: two spent accounts red, active
+  green, next orange dotted, no overlap, footer on one row.
+
+Parked for a later round (reviewer minors): overall deadline for status calls
+over a dead SSH link, draining notices on open and on each poll, translating the
+view-model labels, stripping injected `CLAUDE_CONFIG_DIR` vars on local runs,
+"unsupported" for Windows SSH targets, retrying a failed VERSION read.
 
 ## Not verified
 
