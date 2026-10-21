@@ -43,6 +43,7 @@ export type UISliceContextual = {
     | 'confirm-sleep-twin'
     | 'add-repo'
     | 'quick-open'
+    | 'grazr-accounts'
     | 'worktree-palette'
     | 'workspace-cleanup'
     | 'project-added'

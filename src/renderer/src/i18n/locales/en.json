@@ -33,6 +33,50 @@
     "inspectionOnly": "Inspection only · File row order unchanged"
   },
   "grazr": {
+    "dialog": {
+      "accountActions": "Account actions",
+      "addAccount": "Add Account…",
+      "asOf": "as of {{time}}",
+      "chip": {
+        "engineError": "engine error",
+        "foreign": "another grazr owns the status line",
+        "managed": "managed profile",
+        "noSshAccess": "no SSH access",
+        "notConnected": "not connected",
+        "notDeployed": "engine not deployed",
+        "off": "rotation off",
+        "on": "rotation on",
+        "unreachable": "unreachable",
+        "unsupportedPlatform": "unsupported platform"
+      },
+      "connect": "Connect to Claude's status line",
+      "deployEngine": "Deploy engine",
+      "disconnect": "Disconnect from Claude's status line",
+      "done": "Done",
+      "finishLogin": "Finish the login in the terminal, then reopen Claude Accounts",
+      "loading": "Reading the status…",
+      "noSshAccess": "Connect this host over SSH first.",
+      "notDeployed": "The Claude Accounts engine is not on this host yet. Deploy it to start rotating accounts.",
+      "noticeTitle": "grazr · {{label}}",
+      "openWorkspaceFirst": "Open a workspace on this server first",
+      "reauthenticate": "Re-authenticate…",
+      "refresh": "Refresh",
+      "retry": "Retry",
+      "ringLabel": "Rotation order around the clock",
+      "rotateAutomatically": "Rotate automatically",
+      "subtitle": "{{label}} · swaps below {{session}}% 5h · {{weekly}}% week",
+      "swapNext": "Swap to Next Account",
+      "swapToThis": "Swap to this account",
+      "takeOver": "Take over the status line",
+      "terminalFailed": "Could not open a terminal for the login.",
+      "title": "Claude Accounts",
+      "unsupportedPlatform": "Claude Accounts is not available on this platform.",
+      "window": {
+        "session": "5h",
+        "weekly": "Week"
+      },
+      "windowLabel": "Usage window"
+    },
     "main": {
       "deployedHost": "Deployed the engine to the host.",
       "deployedLocal": "Deployed the engine to this computer.",
