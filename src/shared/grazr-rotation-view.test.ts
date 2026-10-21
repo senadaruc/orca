@@ -558,7 +558,7 @@ describe('grazrHostChip', () => {
       label: 'unsupported platform'
     })
     expect(grazrHostChip({ kind: 'engine-error', message: 'boom' })).toEqual({
-      kind: 'unreachable',
+      kind: 'engine-error',
       label: 'engine error'
     })
   })

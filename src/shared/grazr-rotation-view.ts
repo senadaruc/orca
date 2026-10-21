@@ -60,6 +60,7 @@ export type GrazrHostChipKind =
   | 'unreachable'
   | 'no-ssh-access'
   | 'unsupported-platform'
+  | 'engine-error'
 export type GrazrHostChip = { kind: GrazrHostChipKind; label: string }
 
 function isMissing(entry: GrazrAccountEntry): entry is GrazrMissingAccount {
@@ -321,7 +322,7 @@ export function grazrHostChip(outcome: GrazrHostOutcome): GrazrHostChip {
     case 'unreachable':
       return { kind: 'unreachable', label: 'unreachable' }
     case 'engine-error':
-      return { kind: 'unreachable', label: 'engine error' }
+      return { kind: 'engine-error', label: 'engine error' }
     case 'ok':
       return reportChip(outcome.report)
   }
