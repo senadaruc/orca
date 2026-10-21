@@ -461,7 +461,7 @@ describe('centre', () => {
       name: 'a',
       percentText: '42% left',
       hint: 'fine',
-      next: 'next ▸ b',
+      next: 'b',
       tone: 'fine'
     })
     expect(centre(report, 'weekly', { now: NOW }).percentText).toBe('70% left')
@@ -497,7 +497,7 @@ describe('centre', () => {
       name: '—',
       percentText: '—',
       hint: 'no active login',
-      next: 'next ▸ none',
+      next: null,
       tone: 'none'
     })
   })
@@ -596,7 +596,7 @@ describe('buildGrazrRotationView', () => {
     expect(view.segments.map((s) => s.state)).toEqual(['active', 'next', 'spent', 'blocked'])
     expect(view.segments[0]?.remaining).toBe(42.01)
     expect(view.segments[3]?.remaining).toBeNull()
-    expect(view.centre.next).toBe('next ▸ b')
+    expect(view.centre.next).toBe('b')
   })
 
   it('carries the blocked reason on each row, so an active blocked row can offer re-authentication', () => {

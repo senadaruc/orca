@@ -10,12 +10,13 @@ export const ACCOUNT_NEXT_CLASS = 'text-agent-question'
 export const ACCOUNT_SPENT_CLASS = 'text-destructive'
 export const ACCOUNT_MUTED_CLASS = 'text-muted-foreground'
 
+// Why: Tailwind only emits classes written out in full, so each opacity variant is a literal string.
 export const SEGMENT_CLASS: Record<GrazrSegmentState, string> = {
-  active: ACCOUNT_OK_CLASS,
-  ok: `${ACCOUNT_OK_CLASS}/40`,
-  next: ACCOUNT_NEXT_CLASS,
-  spent: `${ACCOUNT_SPENT_CLASS}/60`,
-  blocked: ACCOUNT_SPENT_CLASS,
+  active: 'text-status-success',
+  ok: 'text-status-success/40',
+  next: 'text-agent-question',
+  spent: 'text-destructive/60',
+  blocked: 'text-destructive',
   unknown: 'text-muted-foreground/20'
 }
 

@@ -86,7 +86,7 @@ function GrazrAccountsModal({
           }
         }}
       >
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-2xl">
           <GrazrAccountsBody
             key={grazrHostKey(target.host)}
             host={target.host}
@@ -309,10 +309,10 @@ function GrazrAccountsBody({
         />
       )}
 
-      <DialogFooter className="sm:justify-between">
-        <div className="flex min-h-8 shrink-0 items-center gap-2 text-xs text-muted-foreground">
+      <DialogFooter className="flex-col items-stretch sm:flex-col sm:justify-start">
+        <div className="flex min-h-4 items-center gap-2 text-xs text-muted-foreground">
           {asOf !== null && (
-            <span className="shrink-0 whitespace-nowrap">
+            <span className="whitespace-nowrap">
               {translate('grazr.dialog.asOf', 'as of {{time}}', {
                 time: new Date(asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               })}
@@ -320,23 +320,18 @@ function GrazrAccountsBody({
           )}
           {spinning && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
         </div>
-        <div className="flex min-w-0 flex-wrap justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" disabled={busy} onClick={refreshAccounts}>
-            {translate('grazr.dialog.refresh', 'Refresh')}
-          </Button>
-          {engineOutdated && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
               disabled={busy}
-              onClick={() => void run(() => window.api.grazr.deploy(host))}
+              onClick={refreshAccounts}
             >
-              {translate('grazr.dialog.updateEngine', 'Update engine…')}
+              {translate('grazr.dialog.refresh', 'Refresh')}
             </Button>
-          )}
-          {report && (
-            <>
+            {report && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span>
@@ -360,6 +355,21 @@ function GrazrAccountsBody({
                   </TooltipContent>
                 )}
               </Tooltip>
+            )}
+            {engineOutdated && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy}
+                onClick={() => void run(() => window.api.grazr.deploy(host))}
+              >
+                {translate('grazr.dialog.updateEngine', 'Update engine…')}
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {report && (
               <Button
                 type="button"
                 size="sm"
@@ -368,11 +378,11 @@ function GrazrAccountsBody({
               >
                 {translate('grazr.dialog.swapNext', 'Swap to Next Account')}
               </Button>
-            </>
-          )}
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            {translate('grazr.dialog.done', 'Done')}
-          </Button>
+            )}
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+              {translate('grazr.dialog.done', 'Done')}
+            </Button>
+          </div>
         </div>
       </DialogFooter>
     </>

@@ -31,7 +31,7 @@ export type GrazrRotationCentre = {
   name: string
   percentText: string
   hint: string
-  next: string
+  next: string | null
   tone: GrazrCentreTone
 }
 export type GrazrRotationRow = {
@@ -242,9 +242,9 @@ export function centre(
 ): GrazrRotationCentre {
   const active = activeAccount(report)
   const next = nextAccount(report, now)
-  const nextLabel = `next ▸ ${next !== null ? next.name : 'none'}`
+  const nextName = next?.name ?? null
   if (active === null) {
-    return { name: '—', percentText: '—', hint: 'no active login', next: nextLabel, tone: 'none' }
+    return { name: '—', percentText: '—', hint: 'no active login', next: nextName, tone: 'none' }
   }
   const live = windowOf(active.snapshot, view, now)
   const percentText = live ? `${Math.round(live.remaining)}% left` : '—'
@@ -263,7 +263,7 @@ export function centre(
     hint = 'not read yet'
     tone = 'none'
   }
-  return { name: active.name, percentText, hint, next: nextLabel, tone }
+  return { name: active.name, percentText, hint, next: nextName, tone }
 }
 
 const SEGMENT_STATE: Record<GrazrRowStatus, GrazrSegmentState> = {

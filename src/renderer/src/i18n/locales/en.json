@@ -57,6 +57,8 @@
       "finishLogin": "Finish the login in the terminal, then reopen Claude Accounts",
       "loading": "Reading the status…",
       "loginTabLabel": "Claude Accounts",
+      "nextMarker": "next ▸",
+      "noNextAccount": "none",
       "noSshAccess": "Connect this host over SSH first.",
       "notDeployed": "The Claude Accounts engine is not on this host yet. Deploy it to start rotating accounts.",
       "noticeTitle": "grazr · {{label}}",
