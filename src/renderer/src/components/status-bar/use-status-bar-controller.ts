@@ -6,6 +6,8 @@ import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import { normalizeUsagePercentageDisplay } from '../../../../shared/usage-percentage-display'
 import { normalizeStatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
 import { getLocalExecutionHostLabel } from '../../../../shared/execution-host'
+import type { GrazrHostRef } from '../../../../shared/grazr-host'
+import { grazrEnrolWorktreeId } from '../grazr/grazr-enrol-worktree'
 import { isStatusBarItemAvailable } from './status-bar-agent-gating'
 import { getVisibleUsageProvider, isUsageEmptyState } from './status-bar-provider-visibility'
 import {
@@ -245,13 +247,15 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
   }
   const handleOpenGrazr = (): void => {
     setUsageMenuOpen(false)
+    const state = useAppStore.getState()
     // Why: a remote owner's rotation lives on that host; the local one is the bar's own machine.
-    useAppStore.getState().openModal('grazr-accounts', {
-      host: remoteOwner
-        ? { kind: 'environment', environmentId: remoteOwner.environmentId }
-        : { kind: 'local' },
+    const host: GrazrHostRef = remoteOwner
+      ? { kind: 'environment', environmentId: remoteOwner.environmentId }
+      : { kind: 'local' }
+    state.openModal('grazr-accounts', {
+      host,
       label: remoteOwner?.label ?? getLocalExecutionHostLabel(),
-      worktreeId: useAppStore.getState().activeWorktreeId ?? null
+      worktreeId: grazrEnrolWorktreeId(state, state.activeWorktreeId ?? null, host)
     })
   }
   const handleOpenProviderAccounts = (provider: ProviderRateLimits['provider']): void => {
