@@ -189,7 +189,7 @@ function GrazrAccountsBody({
       ? translate('grazr.dialog.takeOver', 'Take over the status line')
       : translate('grazr.dialog.connect', "Connect to Claude's status line")
 
-  const subtitle =
+  const subtitleBase =
     report !== null
       ? translate(
           'grazr.dialog.subtitle',
@@ -201,6 +201,14 @@ function GrazrAccountsBody({
           }
         )
       : label
+  // Why: the time only means something once a status has been read, so it stays out of the header before that.
+  const asOfText =
+    report !== null && asOf !== null
+      ? translate('grazr.dialog.asOf', 'as of {{time}}', {
+          time: new Date(asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        })
+      : null
+  const subtitle = asOfText ? `${subtitleBase} · ${asOfText}` : subtitleBase
 
   return (
     <>
@@ -310,18 +318,9 @@ function GrazrAccountsBody({
       )}
 
       <DialogFooter className="flex-col items-stretch sm:flex-col sm:justify-start">
-        <div className="flex min-h-4 items-center gap-2 text-xs text-muted-foreground">
-          {asOf !== null && (
-            <span className="whitespace-nowrap">
-              {translate('grazr.dialog.asOf', 'as of {{time}}', {
-                time: new Date(asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              })}
-            </span>
-          )}
-          {spinning && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-        </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
+            {spinning && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
             <Button
               type="button"
               variant="ghost"
