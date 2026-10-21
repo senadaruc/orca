@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { SettingsSegmentedControl } from '@/components/settings/SettingsFormControls'
 import { translate } from '@/i18n/i18n'
 import { useAppStore } from '@/store'
@@ -74,25 +74,28 @@ function GrazrAccountsModal({
   if (target === null) {
     return null
   }
+  // Why: the dialog mounts beside providerless siblings in App, so it brings its own tooltip provider.
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) {
-          onClose()
-        }
-      }}
-    >
-      <DialogContent className="sm:max-w-xl">
-        <GrazrAccountsBody
-          key={grazrHostKey(target.host)}
-          host={target.host}
-          label={target.label}
-          worktreeId={target.worktreeId}
-          onClose={onClose}
-        />
-      </DialogContent>
-    </Dialog>
+    <TooltipProvider delayDuration={400}>
+      <Dialog
+        open
+        onOpenChange={(open) => {
+          if (!open) {
+            onClose()
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <GrazrAccountsBody
+            key={grazrHostKey(target.host)}
+            host={target.host}
+            label={target.label}
+            worktreeId={target.worktreeId}
+            onClose={onClose}
+          />
+        </DialogContent>
+      </Dialog>
+    </TooltipProvider>
   )
 }
 
