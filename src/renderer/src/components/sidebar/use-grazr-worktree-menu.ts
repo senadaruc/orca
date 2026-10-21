@@ -1,6 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useAppStore } from '@/store'
+import type { AppState } from '@/store/types'
+import { selectRuntimeAwareSshTargetLabel } from '@/store/slices/runtime-environment-ssh-selectors'
 import { getExecutionHostIdForWorktree } from '@/lib/worktree-runtime-owner'
 import { openGrazrEnrolTerminal } from '../grazr/grazr-enrol-terminal'
 import { buildGrazrRotationView, type GrazrRowStatus } from '../../../../shared/grazr-rotation-view'
@@ -48,20 +50,28 @@ export function grazrActiveEmail(report: GrazrStatusReport, now: Date): string |
   return active ? (active.email ?? active.name) : null
 }
 
-function grazrHostLabel(
-  host: GrazrHostRef,
-  environments: readonly { id: string; name: string }[]
-): string {
+export type GrazrLabelState = Pick<
+  AppState,
+  | 'sshConnectionStates'
+  | 'sshTargetLabels'
+  | 'removedSshTargetLabels'
+  | 'sshTargetsHydrated'
+  | 'sshStateByEnvironment'
+> & {
+  runtimeEnvironments: readonly { id: string; name: string }[]
+}
+
+export function grazrHostLabel(host: GrazrHostRef, state: GrazrLabelState): string {
   switch (host.kind) {
     case 'local':
       return getLocalExecutionHostLabel()
     case 'environment':
       return (
-        environments.find((environment) => environment.id === host.environmentId)?.name ||
-        host.environmentId
+        state.runtimeEnvironments.find((environment) => environment.id === host.environmentId)
+          ?.name || host.environmentId
       )
     case 'ssh':
-      return host.sshTargetId
+      return selectRuntimeAwareSshTargetLabel(state, null, host.sshTargetId)
   }
 }
 
@@ -84,11 +94,18 @@ export function useGrazrWorktreeMenu(worktreeId: string): {
   }
 } {
   const hostId = useAppStore((state) => getExecutionHostIdForWorktree(state, worktreeId))
-  const environments = useAppStore((state) => state.runtimeEnvironments)
   const host = useMemo(() => grazrMenuHostFor(hostId, getCurrentLocalPlatform()), [hostId])
-  const label = host === null ? '' : grazrHostLabel(host, environments)
+  const label = useAppStore((state) => (host === null ? '' : grazrHostLabel(host, state)))
   const [status, setStatus] = useState<GrazrHostStatus | null>(null)
   const loadedRef = useRef(false)
+  const mountedRef = useRef(false)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   const fetchStatus = useCallback(async (): Promise<void> => {
     if (host === null) {
@@ -122,7 +139,10 @@ export function useGrazrWorktreeMenu(worktreeId: string): {
       } catch (error) {
         toast.error(messageOf(error))
       }
-      await fetchStatus()
+      // Why: a chosen item closes the menu, so a refresh after unmount would only set state on a dead component.
+      if (mountedRef.current) {
+        await fetchStatus()
+      }
     },
     [fetchStatus]
   )

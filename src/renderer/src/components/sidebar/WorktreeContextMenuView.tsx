@@ -192,7 +192,6 @@ export default function WorktreeContextMenuView({ model }: { model: WorktreeCont
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <GrazrWorktreeMenuItems worktreeId={worktree.id} disabled={isDeleting} />
-              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={handleTogglePin} disabled={isDeleting}>
                 {worktree.isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
                 {worktree.isPinned

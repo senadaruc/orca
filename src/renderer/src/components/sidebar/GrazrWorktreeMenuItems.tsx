@@ -29,56 +29,59 @@ export function GrazrWorktreeMenuItems(props: { worktreeId: string; disabled: bo
   const targets = ok ? grazrSwitchTargets(ok.report, new Date(ok.fetchedAt)) : []
 
   return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger
-        disabled={props.disabled}
-        onPointerEnter={menu.load}
-        onFocus={menu.load}
-      >
-        <Repeat className="size-3.5" />
-        {translate('grazr.menu.grazr', 'grazr')}
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="w-64">
-        <DropdownMenuItem onSelect={menu.actions.openAccounts} disabled={props.disabled}>
-          {translate('grazr.menu.accounts', 'Accounts…')}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger disabled={props.disabled}>
-            {translate('grazr.menu.switchShared', 'Switch Shared Account')}
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-56">
-            {renderTargets({
-              outcomeKind: outcome?.kind ?? null,
-              targets,
-              disabled: props.disabled,
-              onSwapTo: menu.actions.swapTo
-            })}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        {activeEmail !== null ? (
-          <DropdownMenuItem onSelect={menu.actions.reauthenticate} disabled={props.disabled}>
-            {translate('grazr.menu.reauthenticate', 'Re-authenticate {{email}}…', {
-              email: activeEmail
-            })}
+    <>
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger
+          disabled={props.disabled}
+          onPointerEnter={menu.load}
+          onFocus={menu.load}
+        >
+          <Repeat className="size-3.5" />
+          {translate('grazr.menu.grazr', 'grazr')}
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="w-64">
+          <DropdownMenuItem onSelect={menu.actions.openAccounts} disabled={props.disabled}>
+            {translate('grazr.menu.accounts', 'Accounts…')}
           </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuSeparator />
-        {connection === 'connect' ? (
-          <DropdownMenuItem onSelect={menu.actions.connect} disabled={props.disabled}>
-            {translate('grazr.menu.connect', "Connect to Claude's status line")}
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger disabled={props.disabled}>
+              {translate('grazr.menu.switchShared', 'Switch Shared Account')}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-56">
+              {renderTargets({
+                outcomeKind: outcome?.kind ?? null,
+                targets,
+                disabled: props.disabled,
+                onSwapTo: menu.actions.swapTo
+              })}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          {activeEmail !== null ? (
+            <DropdownMenuItem onSelect={menu.actions.reauthenticate} disabled={props.disabled}>
+              {translate('grazr.menu.reauthenticate', 'Re-authenticate {{email}}…', {
+                email: activeEmail
+              })}
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuSeparator />
+          {connection === 'connect' ? (
+            <DropdownMenuItem onSelect={menu.actions.connect} disabled={props.disabled}>
+              {translate('grazr.menu.connect', "Connect to Claude's status line")}
+            </DropdownMenuItem>
+          ) : null}
+          {connection === 'disconnect' ? (
+            <DropdownMenuItem onSelect={menu.actions.disconnect} disabled={props.disabled}>
+              {translate('grazr.menu.disconnect', "Disconnect from Claude's status line")}
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem onSelect={menu.actions.swapNext} disabled={props.disabled}>
+            {translate('grazr.menu.swapNext', 'Swap to the next account now')}
           </DropdownMenuItem>
-        ) : null}
-        {connection === 'disconnect' ? (
-          <DropdownMenuItem onSelect={menu.actions.disconnect} disabled={props.disabled}>
-            {translate('grazr.menu.disconnect', "Disconnect from Claude's status line")}
-          </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuItem onSelect={menu.actions.swapNext} disabled={props.disabled}>
-          {translate('grazr.menu.swapNext', 'Swap to the next account now')}
-        </DropdownMenuItem>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      <DropdownMenuSeparator />
+    </>
   )
 }
 

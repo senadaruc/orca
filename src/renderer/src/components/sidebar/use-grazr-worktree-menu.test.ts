@@ -6,8 +6,10 @@ import {
 import {
   grazrActiveEmail,
   grazrConnectionAction,
+  grazrHostLabel,
   grazrMenuHostFor,
-  grazrSwitchTargets
+  grazrSwitchTargets,
+  type GrazrLabelState
 } from './use-grazr-worktree-menu'
 
 const NOW = new Date('2026-10-21T10:00:00Z')
@@ -86,6 +88,30 @@ describe('grazrMenuHostFor', () => {
 
   it('hides the submenu for a local Windows host', () => {
     expect(grazrMenuHostFor('local', 'win32')).toBeNull()
+  })
+})
+
+describe('grazrHostLabel', () => {
+  const state: GrazrLabelState = {
+    runtimeEnvironments: [{ id: 'env1', name: 'Lab box' }],
+    sshConnectionStates: new Map(),
+    sshTargetLabels: new Map([['build', 'Build server']]),
+    removedSshTargetLabels: new Map(),
+    sshTargetsHydrated: true,
+    sshStateByEnvironment: new Map()
+  }
+
+  it('names an ssh host by its saved target label', () => {
+    expect(grazrHostLabel({ kind: 'ssh', sshTargetId: 'build' }, state)).toBe('Build server')
+  })
+
+  it('falls back to the ssh target id when no label is saved', () => {
+    expect(grazrHostLabel({ kind: 'ssh', sshTargetId: 'other' }, state)).toBe('other')
+  })
+
+  it('names an environment by its name and falls back to its id', () => {
+    expect(grazrHostLabel({ kind: 'environment', environmentId: 'env1' }, state)).toBe('Lab box')
+    expect(grazrHostLabel({ kind: 'environment', environmentId: 'env9' }, state)).toBe('env9')
   })
 })
 
