@@ -60,7 +60,7 @@ describe('grazrLocalInvocation', () => {
 describe('grazrRemoteCommand', () => {
   it('quotes the swap account name byte for byte', () => {
     expect(grazrRemoteCommand('swap', ["o'brien $x"])).toBe(
-      `env GRAZR_STATE_DIR=~/.local/state/orca-grazr GRAZR_CONFIG_DIR=~/.config/orca-grazr GRAZR_NOTIFIER=queue python3 ~/.local/share/orca-grazr/engine/grazr.py swap 'o'"'"'brien $x'`
+      `env GRAZR_STATE_DIR=~/.local/state/orca-grazr GRAZR_CONFIG_DIR=~/.config/orca-grazr GRAZR_NOTIFIER=queue python3 ~/.local/share/orca-grazr/engine/grazr.py swap 'o'\\''brien $x'`
     )
   })
 

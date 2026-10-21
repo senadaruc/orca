@@ -1,4 +1,4 @@
-import { quotePosixShellDoubleQuotedApostrophe } from '../../shared/shell-argument-quoting'
+import { quotePosixShell } from '../../shared/shell-argument-quoting'
 
 export const GRAZR_REMOTE_ENGINE = '~/.local/share/orca-grazr/engine'
 export const GRAZR_REMOTE_STATE = '~/.local/state/orca-grazr'
@@ -61,7 +61,7 @@ function renderEnv(env: Record<string, string>): string {
 // Every argument is quoted, so an account name cannot inject shell syntax on the remote host.
 export function grazrRemoteCommand(verb: GrazrVerb, args: readonly string[]): string {
   const env = renderEnv(grazrEngineEnv({ remote: true, platform: 'linux', homedir: '~' }))
-  const quoted = engineArgs(verb, args).map(quotePosixShellDoubleQuotedApostrophe)
+  const quoted = engineArgs(verb, args).map(quotePosixShell)
   return ['env', env, 'python3', engineFile('~'), verb, ...quoted].join(' ')
 }
 
