@@ -215,6 +215,7 @@ export function UsageRosterPanel({
   onSignIn,
   canSignIn,
   onManageAccounts,
+  onOpenGrazr,
   onUsageDetails,
   renderRow
 }: {
@@ -228,6 +229,7 @@ export function UsageRosterPanel({
   onSignIn: (provider: ProviderId) => void
   canSignIn: (provider: ProviderId) => boolean
   onManageAccounts: () => void
+  onOpenGrazr: () => void
   onUsageDetails: () => void
   // Lets the host wrap a provider's row in a richer control (e.g. the
   // Claude/Codex account-switch drill-in submenu); return null to use the
@@ -350,6 +352,13 @@ export function UsageRosterPanel({
           'auto.components.status.bar.UsageRosterPanel.usageDetails',
           'Usage details & history'
         )}
+        <ChevronRight size={14} className="text-muted-foreground" />
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={onOpenGrazr}
+        className="w-full cursor-pointer justify-between rounded-none px-3.5 py-2.5 text-[13px] text-foreground"
+      >
+        {translate('grazr.menu.claudeAccountsRotation', 'Claude Accounts (rotation)…')}
         <ChevronRight size={14} className="text-muted-foreground" />
       </DropdownMenuItem>
       <DropdownMenuItem

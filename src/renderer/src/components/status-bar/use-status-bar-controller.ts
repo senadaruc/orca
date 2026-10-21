@@ -5,6 +5,7 @@ import { selectFloatingWorkspaceHasUnread } from '../../store/selectors'
 import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import { normalizeUsagePercentageDisplay } from '../../../../shared/usage-percentage-display'
 import { normalizeStatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
+import { getLocalExecutionHostLabel } from '../../../../shared/execution-host'
 import { isStatusBarItemAvailable } from './status-bar-agent-gating'
 import { getVisibleUsageProvider, isUsageEmptyState } from './status-bar-provider-visibility'
 import {
@@ -242,6 +243,17 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
     openSettingsTarget({ pane: 'stats', repoId: null })
     openSettingsPage()
   }
+  const handleOpenGrazr = (): void => {
+    setUsageMenuOpen(false)
+    // Why: a remote owner's rotation lives on that host; the local one is the bar's own machine.
+    useAppStore.getState().openModal('grazr-accounts', {
+      host: remoteOwner
+        ? { kind: 'environment', environmentId: remoteOwner.environmentId }
+        : { kind: 'local' },
+      label: remoteOwner?.label ?? getLocalExecutionHostLabel(),
+      worktreeId: useAppStore.getState().activeWorktreeId ?? null
+    })
+  }
   const handleOpenProviderAccounts = (provider: ProviderRateLimits['provider']): void => {
     const sectionId = getUsageProviderAccountsSectionId(provider)
     // Why: a placeholder for a CLI-owned provider still leads to the host's accounts.
@@ -279,6 +291,7 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
     floatingTerminalActionLabel,
     floatingTerminalShortcut,
     handleManageAccounts,
+    handleOpenGrazr,
     handleOpenProviderAccounts,
     handleRefresh,
     handleUsageDetails,

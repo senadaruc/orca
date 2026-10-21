@@ -92,6 +92,20 @@
       "unreachable": "Could not reach the host: {{detail}}",
       "unsupportedPlatform": "Grazr is not available on this platform."
     },
+    "menu": {
+      "accounts": "Accounts…",
+      "claudeAccountsRotation": "Claude Accounts (rotation)…",
+      "connect": "Connect to Claude's status line",
+      "disconnect": "Disconnect from Claude's status line",
+      "grazr": "grazr",
+      "loading": "Loading…",
+      "nextAccount": "{{name}} · NEXT ▸",
+      "noOtherAccounts": "No other accounts",
+      "reauthenticate": "Re-authenticate {{email}}…",
+      "swapNext": "Swap to the next account now",
+      "switchShared": "Switch Shared Account",
+      "unavailable": "Not available for this host"
+    },
     "web": {
       "desktopOnly": "Grazr runs in the desktop app on the computer that owns the host.",
       "hostLabel": "This host"
