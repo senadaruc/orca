@@ -24,3 +24,15 @@ export type GrazrNotice = {
   title: string
   body: string
 }
+
+export type GrazrApi = {
+  status(host: GrazrHostRef): Promise<GrazrHostStatus>
+  refresh(host: GrazrHostRef): Promise<GrazrActionResult>
+  swap(host: GrazrHostRef, name?: string): Promise<GrazrActionResult>
+  setEnabled(host: GrazrHostRef, enabled: boolean): Promise<GrazrActionResult>
+  install(host: GrazrHostRef, force: boolean): Promise<GrazrActionResult>
+  uninstall(host: GrazrHostRef): Promise<GrazrActionResult>
+  deploy(host: GrazrHostRef): Promise<GrazrActionResult>
+  enrolCommand(host: GrazrHostRef): Promise<{ command: string } | { error: string }>
+  drainNotices(host: GrazrHostRef): Promise<GrazrNotice[]>
+}
