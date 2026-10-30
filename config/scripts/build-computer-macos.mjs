@@ -17,7 +17,10 @@ const entitlementsPath = path.join(
 const bundleId = process.env.ORCA_COMPUTER_MACOS_BUNDLE_ID ?? 'com.stablyai.orca.computer-use'
 const displayName = 'Orca Computer Use'
 const signingIdentity = resolveSigningIdentity()
-const universalTriples = ['arm64-apple-macosx', 'x86_64-apple-macosx']
+// Local-only escape hatch: ORCA_LOCAL_HOST_ARCH=1 builds just the host slice.
+const hostOnly = process.env.ORCA_LOCAL_HOST_ARCH === '1'
+const hostTriple = process.arch === 'arm64' ? 'arm64-apple-macosx' : 'x86_64-apple-macosx'
+const universalTriples = hostOnly ? [hostTriple] : ['arm64-apple-macosx', 'x86_64-apple-macosx']
 
 if (process.platform !== 'darwin') {
   process.exit(0)
@@ -44,7 +47,11 @@ function buildUniversalBinary() {
     return path.join(packagePath, '.build', triple, 'release', 'orca-computer-use-macos')
   })
   mkdirSync(path.dirname(binaryPath), { recursive: true })
-  run('lipo', ['-create', ...builtBinaries, '-output', binaryPath])
+  if (builtBinaries.length === 1) {
+    copyFileSync(builtBinaries[0], binaryPath)
+  } else {
+    run('lipo', ['-create', ...builtBinaries, '-output', binaryPath])
+  }
 }
 
 function createHelperApp() {

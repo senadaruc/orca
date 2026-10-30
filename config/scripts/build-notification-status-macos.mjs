@@ -25,7 +25,7 @@ const bundleId = readArg('--bundle-id') ?? 'com.stablyai.orca'
 const outputPath = readArg('--output') ?? defaultOutputPath
 // Why: dev launches only need the host architecture; release builds ship a
 // universal binary matching the app's x64 + arm64 targets.
-const singleArch = args.includes('--single-arch')
+const singleArch = args.includes('--single-arch') || process.env.ORCA_LOCAL_HOST_ARCH === '1'
 
 const workDir = path.join(tmpdir(), `orca-notification-status-${process.pid}`)
 mkdirSync(workDir, { recursive: true })

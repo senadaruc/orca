@@ -14,7 +14,9 @@ export function buildSwiftCliHelper({ nativeDir, executable, argv }) {
   const outputPath =
     readArg(argv, '--output') ??
     path.join(repoRoot, 'native', nativeDir, '.build', 'release', executable)
-  const triples = argv.includes('--single-arch')
+  // Local-only: ORCA_LOCAL_HOST_ARCH=1 builds just the host slice.
+  const singleArch = argv.includes('--single-arch') || process.env.ORCA_LOCAL_HOST_ARCH === '1'
+  const triples = singleArch
     ? [process.arch === 'arm64' ? 'arm64-apple-macosx' : 'x86_64-apple-macosx']
     : ['arm64-apple-macosx', 'x86_64-apple-macosx']
   const workDir = mkdtempSync(path.join(tmpdir(), `${executable}-`))
