@@ -4,7 +4,8 @@ import { withUpdaterSpan } from '../../observability/instrumentation'
 import {
   AUTO_UPDATE_CHECK_INTERVAL_MS,
   AUTO_UPDATE_RETRY_INTERVAL_MS,
-  MAX_AUTO_UPDATE_RETRY_INTERVAL_MS
+  MAX_AUTO_UPDATE_RETRY_INTERVAL_MS,
+  updatesDisabledForLocalBuild
 } from './updater-state'
 import { UpdaterCheckFailure } from './updater-check-failure'
 import { getDelayedUpdateWakeDelayMs } from '../releases/updater-release-delay'
@@ -45,6 +46,10 @@ export abstract class UpdaterScheduling extends UpdaterCheckFailure {
   protected runBackgroundUpdateCheck(
     nudgeId: string | null = this.getPersistedPendingUpdateNudgeId()
   ): boolean {
+    // LOCAL-ONLY: returning false re-arms the timer, which is harmless and keeps this a no-op.
+    if (updatesDisabledForLocalBuild()) {
+      return false
+    }
     if (
       this.pendingQuitAndInstallTimer ||
       this.quitAndInstallInProgress ||
