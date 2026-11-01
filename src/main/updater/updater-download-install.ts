@@ -7,12 +7,16 @@ import {
 import { recordUpdaterLifecycle } from '../updater-lifecycle-diagnostics'
 import { isExternallyManagedLinuxInstall } from '../linux-update-package-type'
 import { updaterCodedMessage } from '../../shared/updater-failure-copy'
-import { QUIT_AND_INSTALL_DELAY_MS } from './updater-state'
+import { QUIT_AND_INSTALL_DELAY_MS, updatesDisabledForLocalBuild } from './updater-state'
 import { UpdaterRemoteStatus } from './updater-remote-status'
 import { prepareThisProcessShipItStaging } from './shipit-leftover-recovery'
 
 export abstract class UpdaterDownloadInstall extends UpdaterRemoteStatus {
   protected quitAndInstall(): void {
+    // LOCAL-ONLY: local builds never install updates.
+    if (updatesDisabledForLocalBuild()) {
+      return
+    }
     if (
       this.localBuildSelectionInProgress ||
       this.pinnedBuildSelectionInProgress ||
@@ -51,6 +55,10 @@ export abstract class UpdaterDownloadInstall extends UpdaterRemoteStatus {
   }
 
   protected downloadUpdate(): void {
+    // LOCAL-ONLY: local builds never download updates.
+    if (updatesDisabledForLocalBuild()) {
+      return
+    }
     if (
       this.localBuildSelectionInProgress ||
       this.pinnedBuildSelectionInProgress ||

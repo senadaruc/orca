@@ -3,9 +3,15 @@ import { isMacInstallRequested } from '../updater-mac-install'
 import type { UpdateCheckOptions } from '../../shared/update-status-types'
 import type { ReleaseChannel } from '../../shared/release-channel'
 import { UpdaterScheduling } from './updater-scheduling'
+import { updatesDisabledForLocalBuild } from './updater-state'
 
 export abstract class UpdaterMenuChecks extends UpdaterScheduling {
   protected checkForUpdatesFromMenu(options?: UpdateCheckOptions): void {
+    // LOCAL-ONLY: local builds report not-available instead of checking or downloading.
+    if (updatesDisabledForLocalBuild()) {
+      this.sendStatus({ state: 'not-available', userInitiated: true })
+      return
+    }
     if (
       this.pendingQuitAndInstallTimer ||
       this.quitAndInstallInProgress ||

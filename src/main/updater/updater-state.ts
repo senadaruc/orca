@@ -1,9 +1,23 @@
-import type { BrowserWindow } from 'electron'
+import { app, type BrowserWindow } from 'electron'
 import type { ElectronAutoUpdater } from '../electron-updater-loader'
 import type { LocalBuildFeed } from '../local-builds/local-build-feed-server'
 import type { UpdateSource, UpdateStatus } from '../../shared/update-status-types'
 import type { ReleaseChannel } from '../../shared/release-channel'
 import type { PrimaryEventSuppression, UpdateCheckVariant } from './updater-types'
+
+// LOCAL-ONLY (patched build, never upstream): `1.x.y-local.*` semver-sorts below stable 1.x.y, so
+// stock releases would be offered and would replace the patched app. Local builds never update.
+let localBuildUpdatesLogged = false
+export function updatesDisabledForLocalBuild(): boolean {
+  if (!app.getVersion().includes('-local.')) {
+    return false
+  }
+  if (!localBuildUpdatesLogged) {
+    localBuildUpdatesLogged = true
+    console.info('[updater] local build: automatic updates disabled')
+  }
+  return true
+}
 
 export const AUTO_UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
 export const AUTO_UPDATE_RETRY_INTERVAL_MS = 60 * 60 * 1000
