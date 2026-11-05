@@ -24,6 +24,7 @@ import { isAgentTaskCompleteTrackingEnabled } from './agent-task-complete-settin
 import { isAgentProcessInspectionCostly } from '../agent-process-inspection-cost'
 import { isRemoteExecutionHostPtyId } from '../../../../../shared/remote-execution-host-pty-id'
 import { retireLiveAgentRowOnConfirmedProcessExit } from './confirmed-process-exit-row-retire'
+import { registerPtyScreenReader, unregisterPtyScreenReader } from '../pty-screen-readers'
 
 import type { ConnectPanePtySession } from './connect-pane-pty-session'
 
@@ -79,6 +80,11 @@ export function installTerminalKeydownFit(session: ConnectPanePtySession): void 
   session.pendingVisibleRemoteViewportClaim = false
   session.setPanePtyFitBinding = (ptyId: string): void => {
     bindPanePtyId(session.pane.id, ptyId, session.deps.tabId)
+    registerPtyScreenReader(ptyId, {
+      tabId: session.deps.tabId,
+      leafId: session.pane.leafId,
+      terminal: session.pane.terminal
+    })
     session.pane.container.dataset.ptyId = ptyId
     if (
       session.deps.isVisibleRef.current &&
@@ -161,6 +167,10 @@ export function installTerminalKeydownFit(session: ConnectPanePtySession): void 
   session.clearPanePtyFitBinding = (): void => {
     // Clear module-level fit bindings explicitly; DOM removal cannot release them.
     bindPanePtyId(session.pane.id, null, session.deps.tabId)
+    const boundPtyId = session.pane.container.dataset.ptyId
+    if (boundPtyId !== undefined) {
+      unregisterPtyScreenReader(boundPtyId)
+    }
     session.visibleRemoteViewportClaimPtyId = null
     session.pendingVisibleRemoteViewportClaim = false
     session.activePanePtyBinding = null

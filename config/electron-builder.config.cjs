@@ -132,6 +132,12 @@ const bundledPluginResources = {
   from: 'resources/plugins/launch',
   to: 'plugins/launch'
 }
+// Why: the grazr engine is a Python tree the packaged app runs from disk, so it must be a real
+// directory outside app.asar.
+const grazrEngineResource = {
+  from: 'resources/grazr',
+  to: 'grazr'
+}
 // Packaged main/CLI/SSH/speech paths lack pnpm links; copy runtime closure so bare requires cannot fall through to checkout dependencies.
 // Ship only the 166KB emoji dataset used by worktree naming, not all 49MB of emojibase-data.
 const emojiShortcodeDatasetResource = {
@@ -144,6 +150,7 @@ const commonExtraResources = [
   orcadTemplateNodeModulesExtraResource,
   ...bundledRipgrepExtraResources,
   bundledPluginResources,
+  grazrEngineResource,
   skillFreshnessResources,
   ...agentBrowserSkillResources,
   nativeChatVisualsResource,
@@ -307,6 +314,7 @@ module.exports = {
     '!resources/native-chat-visuals/**',
     // extraResources already ships plugin bytes; exclude source duplicates.
     '!resources/plugins/launch/**',
+    '!resources/grazr/**',
     // Platform extraResources selects speech natives; asar would duplicate it and ship other variants.
     '!node_modules/sherpa-onnx*{,/**/*}',
     // CLI shim belongs beside resources/bin/orca.exe; unpacking source creates a second .cmd without its executable (#7351).

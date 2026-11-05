@@ -22,7 +22,7 @@ import { fingerprintRuntimeSshTarget } from '../ssh/runtime-ssh-target-fingerpri
 import type { ListRuntimeEnvironments } from './shell-editor-ssh-host'
 
 const link = { sshTargetId: 'ssh-1', sshTargetGeneration: 1, localPort: 41000, remotePort: 6768 }
-const managedServer = { id: 'env-1', orcadDeployment: link }
+const managedServer = { id: 'env-1', name: 'Builder', orcadDeployment: link }
 
 function sshTarget(id: string, configHost: string, overrides: Partial<SshTarget> = {}): SshTarget {
   return {
@@ -56,6 +56,7 @@ function spawnedChild(): { once: unknown; off: unknown; unref: unknown } {
 describe('Open in VS Code for a workspace on a server Orca reaches through an SSH host', () => {
   const sshAccessServer = {
     id: 'env-1',
+    name: 'Builder',
     sshAccess: {
       ...link,
       endpointId: 'tunnel',

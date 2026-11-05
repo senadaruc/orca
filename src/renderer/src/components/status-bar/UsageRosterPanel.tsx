@@ -206,6 +206,7 @@ export function UsageRosterPanel({
   onSignIn,
   canSignIn,
   onManageAccounts,
+  onOpenGrazr,
   onUsageDetails,
   renderRow
 }: {
@@ -219,6 +220,7 @@ export function UsageRosterPanel({
   onSignIn: (provider: ProviderId) => void
   canSignIn: (provider: ProviderId) => boolean
   onManageAccounts: () => void
+  onOpenGrazr: () => void
   onUsageDetails: () => void
   // Return null to use the default row instead of a host-supplied detail/account wrapper.
   renderRow?: (p: ProviderRateLimits, row: React.ReactNode) => React.ReactNode
@@ -337,6 +339,13 @@ export function UsageRosterPanel({
           'auto.components.status.bar.UsageRosterPanel.usageDetails',
           'Usage details & history'
         )}
+        <ChevronRight size={14} className="text-muted-foreground" />
+      </DropdownMenuItem>
+      <DropdownMenuItem
+        onSelect={onOpenGrazr}
+        className="w-full cursor-pointer justify-between rounded-none px-3.5 py-2.5 text-[13px] text-foreground"
+      >
+        {translate('grazr.menu.claudeAccountsRotation', 'Claude Accounts (rotation)…')}
         <ChevronRight size={14} className="text-muted-foreground" />
       </DropdownMenuItem>
       <DropdownMenuItem

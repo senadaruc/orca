@@ -235,6 +235,7 @@ describe('status bar Claude account that needs a sign-in', () => {
           onSignIn,
           canSignIn: (provider) => usageRowSignInOpensSettings(provider, storeSettings),
           onManageAccounts: () => {},
+          onOpenGrazr: () => {},
           onUsageDetails: () => {},
           renderRow: (p, row) =>
             React.createElement(ClaudeSwitcherMenu, {

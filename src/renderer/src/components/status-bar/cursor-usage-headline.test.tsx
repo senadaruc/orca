@@ -129,6 +129,7 @@ describe('Cursor compact usage headline', () => {
           onSignIn={() => {}}
           canSignIn={() => false}
           onManageAccounts={() => {}}
+          onOpenGrazr={() => {}}
           onUsageDetails={() => {}}
         />
       )

@@ -35,6 +35,7 @@ import { translate } from '@/i18n/i18n'
 import { useOptionalShortcutLabel } from '@/hooks/useShortcutLabel'
 import type { WorktreeContextMenuModel } from './use-worktree-context-menu-model'
 import { WorktreeStatusMenuItems } from './WorktreeStatusMenuItems'
+import { GrazrWorktreeMenuItems } from './GrazrWorktreeMenuItems'
 import { WorktreeContextMenuOverlays } from './WorktreeContextMenuOverlays'
 import {
   WORKTREE_CONTEXT_MENU_SCOPE_ATTR,
@@ -190,6 +191,7 @@ export default function WorktreeContextMenuView({ model }: { model: WorktreeCont
                 )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <GrazrWorktreeMenuItems worktreeId={worktree.id} disabled={isDeleting} />
               <DropdownMenuItem onSelect={handleTogglePin} disabled={isDeleting}>
                 {worktree.isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
                 {worktree.isPinned
