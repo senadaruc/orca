@@ -107,24 +107,38 @@ Paths = namedtuple("Paths", "config_path config_dir accounts_dir")
 STATUSLINE_WINDOWS = (("five_hour", "session", "session"), ("seven_day", "weekly_all", "weekly"))
 
 
+def _statusline_window(windows, window, kind, group):
+    """One window as the status line reports it, or None when it is missing or
+    carries no numeric used_percentage (Ultra's five-hour window is being removed,
+    so Claude sends it as null, {} or not at all)."""
+    entry = windows.get(window)
+    if not isinstance(entry, dict):
+        return None
+    used = entry.get("used_percentage")
+    if not isinstance(used, (int, float)) or isinstance(used, bool):
+        return None
+    return core.Limit(
+        kind=kind,
+        scope=None,
+        group=group,
+        remaining=max(0, 100 - used),
+        resets_at=_from_unix(entry.get("resets_at")),
+    )
+
+
 def statusline_limits(payload):
     """The limits Claude hands its status-line command after every message, for
-    the token the session is using. None when the payload has none."""
+    the token the session is using. Each window is read on its own, so one that
+    is unusable is left out and the others are kept. None when the payload has
+    no readable rate_limits object at all."""
     try:
         windows = json.loads(payload)["rate_limits"]
-        return [
-            core.Limit(
-                kind=kind,
-                scope=None,
-                group=group,
-                remaining=max(0, 100 - windows[window]["used_percentage"]),
-                resets_at=_from_unix(windows[window].get("resets_at")),
-            )
-            for window, kind, group in STATUSLINE_WINDOWS
-            if window in windows
-        ]
     except (AttributeError, KeyError, TypeError, ValueError):
         return None
+    if not isinstance(windows, dict):
+        return None
+    limits = (_statusline_window(windows, window, kind, group) for window, kind, group in STATUSLINE_WINDOWS)
+    return [limit for limit in limits if limit is not None]
 
 
 # Per-model weekly limits, for MODEL_LIMITS=1. The status line carries only the
@@ -344,7 +358,7 @@ def active_account(paths):
         return None
 
 
-def enrol(paths, store, name, source_config_dir=None):
+def enrol(paths, store, name, source_config_dir=None, expect_email=None):
     """Copy an existing login into grazr's keeping. Authentication is always
     Claude's own `claude auth login`; grazr never sees a password. `source_config_dir`
     is an isolated CLAUDE_CONFIG_DIR, so enrolling a second account never
@@ -362,7 +376,29 @@ def enrol(paths, store, name, source_config_dir=None):
 
     with open(config_path) as handle:
         identity = (json.load(handle).get("oauthAccount") or {})
+    return enrol_identity(paths, store, name, identity, blob, expect_email)
+
+
+def enrol_identity(paths, store, name, identity, blob, expect_email=None):
+    """Park a credential blob and record its account, given the identity it
+    belongs to. Shared by a login read from a config dir and one imported as
+    JSON, so both leave identical records. Nothing is written when it refuses.
+    `expect_email` is compared case-insensitively: a login under another
+    address is refused rather than enrolled under the wrong account."""
     account_id = accounts.account_id(identity.get("accountUuid"))
+    # A non-string e-mail or organisation is stored as None rather than as whatever was sent.
+    identity = dict(identity)
+    for key in ("emailAddress", "organizationName"):
+        if not isinstance(identity.get(key), str):
+            identity[key] = None
+
+    if expect_email is not None:
+        signed_in = str(identity.get("emailAddress") or "")
+        if signed_in.lower() != expect_email.lower():
+            raise RuntimeError(
+                "signed in as %s, expected %s"
+                % (signed_in or "an account with no e-mail", expect_email)
+            )
 
     # Accounts are looked up by name, so a duplicate hides one of them for good.
     for existing in accounts.load(paths, []):
@@ -382,6 +418,23 @@ def enrol(paths, store, name, source_config_dir=None):
         },
     )
     return account_id
+
+
+def export_isolated_login(store, config_dir):
+    """The credential blob and identity of an isolated login, for another
+    engine to import. The blob is whatever the store returns and is only ever
+    handed back to the caller; nothing here prints or logs it."""
+    blob = store.read_isolated(config_dir)
+    try:
+        with open(os.path.join(config_dir, ".claude.json")) as handle:
+            identity = (json.load(handle).get("oauthAccount") or {})
+    except (OSError, ValueError, AttributeError):
+        identity = {}
+    if not isinstance(identity, dict):
+        identity = {}
+    if blob is None or not identity.get("accountUuid"):
+        raise RuntimeError("No login found in %s. Run `claude auth login` there first" % config_dir)
+    return {"identity": identity, "blob": blob}
 
 
 def discard_isolated_login(store, config_dir):

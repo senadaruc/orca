@@ -29,17 +29,17 @@ import core
 import pins
 import stores
 
-# model_limits and parked_poll_minutes default off, and pinned_rotation to
-# exclude, so a Config built without them reads as before.
+# model_limits and parked_poll_minutes default off, pinned_rotation to
+# exclude and ultra_no_session on, so a Config built without them reads as before.
 Config = namedtuple(
-    "Config", "thresholds accounts enabled dry_run model_limits parked_poll_minutes pinned_rotation",
-    defaults=(False, 0, pins.EXCLUDE),
+    "Config", "thresholds accounts enabled dry_run model_limits parked_poll_minutes pinned_rotation ultra_no_session",
+    defaults=(False, 0, pins.EXCLUDE, True),
 )
 
 Runtime = namedtuple("Runtime", "paths store state_dir config")
 
 # Reported by `status --json`.
-VERSION = "0.4.7+senad.6"
+VERSION = "0.4.7+fork.13"
 
 DEFAULT_CONFIG = """\
 # Rotate when a limit group has less than this percent left.
@@ -54,10 +54,11 @@ DRY_RUN=0                # 1 = log the decision, do not swap
 MODEL_LIMITS=0           # 1 = also watch per-model weekly limits, from Claude's usage endpoint
 PARKED_POLL_MINUTES=0    # re-read parked accounts' usage this often, refreshing their tokens; 0 = never
 PINNED_ROTATION=exclude  # exclude = an account pinned to an agent is never rotated to; keep = it still is
+ULTRA_NO_SESSION=1       # 1 = Ultra accounts (Max 20x) rotate on the weekly limit only; 0 = on the 5-hour one too
 """
 
 _THRESHOLD_KEYS = {"REMAINING_SESSION": ("session", 15), "REMAINING_WEEKLY": ("weekly", 10)}
-_FLAG_KEYS = (("ENABLED", True), ("DRY_RUN", False), ("MODEL_LIMITS", False))
+_FLAG_KEYS = (("ENABLED", True), ("DRY_RUN", False), ("MODEL_LIMITS", False), ("ULTRA_NO_SESSION", True))
 
 LOG = "grazr.log"
 # Shared by install, enrol and status, so the wording that refuses a takeover lives once.
@@ -358,6 +359,10 @@ def act_on(decision, runtime, active_id, limits, enrolled=(), now=None, why=None
     dry_run = config.dry_run
     if decision == "stay":
         return None
+    # What the active account's reading says once Ultra's session window is
+    # set aside, so the notices quote the window that really decides.
+    active_record = next((entry for entry in enrolled if entry.id == active_id), None)
+    judged = _decision_limits(active_record, limits, config) if active_record else limits
 
     def name_of(identifier):
         return _name_of(enrolled, identifier)
@@ -374,7 +379,7 @@ def act_on(decision, runtime, active_id, limits, enrolled=(), now=None, why=None
         # serve requests, so saying they are spent would stop you working for
         # no reason.
         readings = {entry.id: entry.snapshot for entry in enrolled}
-        readings[active_id] = limits
+        readings[active_id] = judged
         line = "Every account is below your thresholds, earliest reset %s" % _earliest_reset(
             now or datetime.now(timezone.utc), config.thresholds, readings, enrolled
         )
@@ -403,10 +408,10 @@ def act_on(decision, runtime, active_id, limits, enrolled=(), now=None, why=None
     now = now or datetime.now(timezone.utc)
     _record_arrival(state_dir, next_id, now)
     if why is None:
-        low = core.shortfall(limits or [], now, config.thresholds)
+        low = core.shortfall(judged or [], now, config.thresholds)
         if low:
             why = ", %s %d%% < %d%%" % (low.group, low.remaining, config.thresholds[low.group])
-        elif core.expiring_sooner(limits or [], active_id, enrolled, now, config.thresholds) == next_id:
+        elif core.expiring_sooner(judged or [], active_id, enrolled, now, config.thresholds) == next_id:
             why = ", its week ends sooner"
         else:
             why = ""
@@ -578,7 +583,7 @@ def load_config(path):
     return Config(
         thresholds=thresholds, accounts=accounts, enabled=flags[0], dry_run=flags[1],
         model_limits=flags[2], parked_poll_minutes=parked_poll_minutes,
-        pinned_rotation=pinned_rotation,
+        pinned_rotation=pinned_rotation, ultra_no_session=flags[3],
     )
 
 
@@ -785,9 +790,12 @@ def statusline(runtime=None, payload=None, spawn=subprocess.run, detach=None):
     # The status line never carries a per-model limit; merged() keeps the last
     # one the usage endpoint gave, and it binds only while a pane is on that model.
     models = _models_in_use(state_dir, now)
-    relevant = _relevant(limits, models)
+    active_record, usable = _decision_setup(
+        paths, _bound(_usable(state_dir, enrolled, active, now, config), models), active, config,
+    )
+    relevant = _decision_limits(active_record, _relevant(limits, models), config)
     rotate = core.needs_rotation(relevant, now, config.thresholds) or bool(core.expiring_sooner(
-        relevant, active, _bound(_usable(state_dir, enrolled, active, now, config), models), now, config.thresholds
+        relevant, active, usable, now, config.thresholds
     ))
     due = config.model_limits and _scoped_due(state_dir, store, active, now)
     if not rotate and not due:
@@ -824,6 +832,34 @@ def _pinned_reading(runtime, account_id, limits, now):
             "%s %d%% left. Its agent stays on it; pin it elsewhere to move it" % (_window_name(low), low.remaining),
         )
     return 0
+
+
+def _decision_limits(record, limits, config):
+    """The windows core decides on for one account. With ULTRA_NO_SESSION on, an
+    Ultra account's 5-hour window is dropped, since Anthropic is removing it and
+    only the weekly limit still binds. The stored snapshots keep every window;
+    this is applied to the copy handed to core, never to what is recorded."""
+    if not config.ultra_no_session or not core.is_ultra(record.plan) or not isinstance(limits, list):
+        return limits
+    return [entry for entry in limits if entry.group != "session"]
+
+
+def _decision_setup(paths, enrolled, active, config):
+    """The active account as core should see it, and the enrolled accounts with
+    their session windows dropped where `_decision_limits` says so. The active
+    account's plan comes from Claude's live profile when that names one, since
+    it is the account in use. Returns (active record, accounts)."""
+    # Only an Ultra rule reads the plan, and the live profile is read only when
+    # it can change the answer: with the flag off, the stored plans stand.
+    live = accounts.plan_of(_live_oauth(paths)) if config.ultra_no_session else None
+    views = []
+    for entry in enrolled:
+        record = entry._replace(plan=live if entry.id == active and live is not None else entry.plan)
+        views.append(record._replace(snapshot=_decision_limits(record, entry.snapshot, config)))
+    active_record = next((entry for entry in views if entry.id == active), None)
+    if active_record is None:
+        active_record = core.Account(active, None, None, live)
+    return active_record, views
 
 
 def _relevant(snapshot, models):
@@ -1191,8 +1227,14 @@ def _decide(runtime):
         if limits is None:
             return 0
         models = _models_in_use(state_dir, now)
-        enrolled = _bound(_usable(state_dir, accounts.load(paths, config.accounts), active, now, config), models)
-        decision = core.decide(_relevant(limits, models), active, enrolled, now, config.thresholds)
+        active_record, enrolled = _decision_setup(
+            paths, _bound(_usable(state_dir, accounts.load(paths, config.accounts), active, now, config), models),
+            active, config,
+        )
+        decision = core.decide(
+            _decision_limits(active_record, _relevant(limits, models), config), active, enrolled, now,
+            config.thresholds,
+        )
         # rotate refuses this too, but a raised error suits the person who just
         # pressed a key, not every message of every pane.
         if isinstance(decision, tuple):
@@ -1290,9 +1332,16 @@ def recover(runtime=None, error=None, failed=None, now=None):
         else:
             _block(state_dir, active, error, limits, now)
             pinned = False
-        enrolled = _bound(
-            _usable(state_dir, accounts.load(paths, config.accounts), active, now, config),
-            _models_in_use(state_dir, now),
+        # The refused account's limits stay as read: a real refusal is the
+        # server's word and must still move the pane. Only the accounts it
+        # could move to lose their session windows, Ultra ones included.
+        _, enrolled = _decision_setup(
+            paths,
+            _bound(
+                _usable(state_dir, accounts.load(paths, config.accounts), active, now, config),
+                _models_in_use(state_dir, now),
+            ),
+            active, config,
         )
         decision = _after_failure(limits, active, enrolled, now, config.thresholds, pinned)
         if isinstance(decision, tuple):
@@ -1604,6 +1653,17 @@ def _dispatch(argv):
     if command == "status" and len(argv) > 2 and all(flag in status_flags for flag in argv[2:]):
         # The Orca plugin reads the report as JSON, and never waits on a key.
         return status(**dict(status_flags[flag] for flag in argv[2:]))
+    if command == "enrol" and len(argv) > 2:
+        # Without a terminal: the Orca plugin signs in, then enrols the result here.
+        options = _enrol_flags(argv[2:])
+        if options is None:
+            print(ENROL_USAGE, file=sys.stderr)
+            return 2
+        return enrol_noninteractive(**options)
+    if command == "login-export" and len(argv) == 4 and argv[2] == "--from":
+        return login_export(from_dir=argv[3])
+    if command == "login-discard" and len(argv) == 4 and argv[2] == "--from":
+        return login_discard(from_dir=argv[3])
     if command == "recover" and len(argv) == 4:
         # Detached from the failure hook, with the error and the account it hit.
         return recover(error=argv[2], failed=argv[3])
@@ -1614,7 +1674,9 @@ def _dispatch(argv):
             or (command == "status" and len(argv) > 2)):
         print("usage: grazr.py %s" % "|".join(
             list(entry_points) + ["install --force", "pin PANE ACCOUNT", "unpin PANE", "token ACCOUNT",
-                                  "token-forget ACCOUNT", "set ACCOUNTS|PINNED_ROTATION|ENABLED VALUE"]
+                                  "token-forget ACCOUNT", "set ACCOUNTS|PINNED_ROTATION|ENABLED VALUE",
+                                  "enrol --from DIR|--stdin --name NAME [--expect-email EMAIL] [--json]",
+                                  "login-export --from DIR", "login-discard --from DIR"]
         ), file=sys.stderr)
         return 2
     return entry_points[command]()
@@ -1753,7 +1815,7 @@ def swap(runtime=None, target=None):
             return _refuse_swap("Not logged in, nothing to swap from")
         limits = _latest_reading(paths, active)
         if target is not None:
-            enrolled = accounts.load(paths, [])
+            _, enrolled = _decision_setup(paths, accounts.load(paths, []), active, config)
             next_id = next(
                 (entry.id for entry in enrolled if target in (entry.name, entry.id)), None
             )
@@ -1774,9 +1836,13 @@ def swap(runtime=None, target=None):
                     % _name_of(enrolled, next_id)
                 )
         else:
-            enrolled = _bound(
-                _usable(state_dir, accounts.load(paths, config.accounts), active, now, config),
-                _models_in_use(state_dir, now),
+            _, enrolled = _decision_setup(
+                paths,
+                _bound(
+                    _usable(state_dir, accounts.load(paths, config.accounts), active, now, config),
+                    _models_in_use(state_dir, now),
+                ),
+                active, config,
             )
             next_id = core.next_account(active, enrolled, now, config.thresholds)
         if next_id is None:
@@ -1829,6 +1895,8 @@ def status_report(runtime, now=None):
     statusline = claude.statusline_installed(paths.config_dir, _record_path(state_dir), state_dir)
     failure_hook = claude.failure_hook_installed(paths.config_dir, _failure_command(state_dir))
     last = _last_rotation(state_dir)
+    live_oauth = _live_oauth(paths)
+    plans = {entry.id: _account_plan(paths, entry.id, active, live_oauth) for entry in everyone}
     return {
         "installed": statusline and failure_hook,
         "connection": {
@@ -1850,11 +1918,15 @@ def status_report(runtime, now=None):
                 "id": entry.id,
                 "name": entry.name,
                 "email": _email_of(paths, entry.id),
-                "parked": accounts.has_parked_credential(store, entry.id),
+                "organization": _organization_of(paths, entry.id),
+                "plan": plans[entry.id],
+                "ultra": core.is_ultra(plans[entry.id]),
+                "parked":accounts.has_parked_credential(store, entry.id),
                 "snapshot": accounts.snapshot_to_json(entry.snapshot),
                 "blocked": blocked[entry.id].get("reason") if entry.id in blocked else None,
                 "in_order": entry.id in ordered_ids,
                 "first_reading_due": accounts.first_reading_due(paths, entry.id),
+                "updated": accounts.updated_at(paths, entry.id),
             }
             for entry in everyone
         ],
@@ -1866,6 +1938,7 @@ def status_report(runtime, now=None):
             "model_limits": config.model_limits,
             "parked_poll_minutes": config.parked_poll_minutes,
             "pinned_rotation": config.pinned_rotation,
+            "ultra_no_session": config.ultra_no_session,
             "config_path": _config_path(),
             "state_dir": state_dir,
             # Same fallback as notify, so an empty GRAZR_NOTIFIER reads as Herdr there too.
@@ -1875,7 +1948,7 @@ def status_report(runtime, now=None):
             identifier: {"reason": entry.get("reason"), "at": entry.get("at"), "until": entry.get("until")}
             for identifier, entry in blocked.items()
         },
-        "changed_at": last["at"] if last else None,
+        "changed_at": _changed_at(state_dir, _config_path()),
         "last_rotation": last,
         "last_reported": _last_decision(state_dir),
         "managed_profile": managed_claude_home(),
@@ -1890,6 +1963,54 @@ def _email_of(paths, identifier):
         return None
     email = oauth.get("emailAddress") if isinstance(oauth, dict) else None
     return email if isinstance(email, str) else None
+
+
+def _organization_of(paths, identifier):
+    try:
+        organization = accounts.read(paths, identifier).get("organization")
+    except (OSError, ValueError):
+        return None
+    return organization if isinstance(organization, str) else None
+
+
+def _live_oauth(paths):
+    """The live `oauthAccount` in Claude's config file, None when the file is
+    missing, unreadable or lacks it. Read once per report."""
+    try:
+        with open(paths.config_path) as handle:
+            oauth = json.load(handle).get("oauthAccount")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return oauth if isinstance(oauth, dict) else None
+
+
+def _account_plan(paths, identifier, active_id, live_oauth):
+    """The active account's live profile when it names a plan, else the stored
+    record's. Other accounts report the stored record's plan."""
+    if identifier == active_id:
+        live = accounts.plan_of(live_oauth)
+        if live is not None:
+            return live
+    try:
+        oauth = accounts.read(paths, identifier).get("oauthAccount")
+    except (OSError, ValueError):
+        return None
+    return accounts.plan_of(oauth)
+
+
+def _changed_at(state_dir, config_path):
+    """When this host's rotation last changed: the newer of config.env's write
+    (an order set by hand or by a client keeping hosts in step) and the last
+    swap. None before either, or on an older state."""
+    stamps = []
+    try:
+        stamps.append(os.path.getmtime(config_path))
+    except OSError:
+        pass
+    last = _last_rotation(state_dir)
+    if last:
+        stamps.append(last["at"])
+    return max(stamps) if stamps else None
 
 
 def _last_rotation(state_dir):
@@ -2100,6 +2221,141 @@ def _enrol_between_rotations(runtime, name, source):
 
 
 
+ENROL_USAGE = "usage: grazr.py enrol (--from DIR | --stdin) --name NAME [--expect-email EMAIL] [--json]"
+_ENROL_VALUE_FLAGS = {"--from": "from_dir", "--name": "name", "--expect-email": "expect_email"}
+_ENROL_SWITCHES = {"--stdin": "stdin", "--json": "as_json"}
+
+
+def _enrol_flags(arguments):
+    """The flags of a non-interactive `enrol`. None unless they make one whole
+    request: each flag once, a non-empty name, and exactly one login source.
+    An empty --expect-email is refused here, since it would check nothing."""
+    options = {"from_dir": None, "name": None, "expect_email": None, "stdin": False, "as_json": False}
+    seen = set()
+    index = 0
+    while index < len(arguments):
+        flag = arguments[index]
+        if flag in seen:
+            return None
+        if flag in _ENROL_SWITCHES:
+            options[_ENROL_SWITCHES[flag]] = True
+        elif flag in _ENROL_VALUE_FLAGS and index + 1 < len(arguments):
+            value = arguments[index + 1].strip()
+            if not value:
+                return None
+            options[_ENROL_VALUE_FLAGS[flag]] = value
+            index += 1
+        else:
+            return None
+        seen.add(flag)
+        index += 1
+    if not options["name"] or bool(options["from_dir"]) == options["stdin"]:
+        return None
+    return options
+
+
+def _read_import(text):
+    """The JSON that `login-export` printed, as read from stdin. A refusal says
+    what is missing, never what was there: the text holds a credential."""
+    try:
+        payload = json.loads(text)
+    except ValueError:
+        raise RuntimeError("The login to import is not JSON")
+    identity = payload.get("identity") if isinstance(payload, dict) else None
+    blob = payload.get("blob") if isinstance(payload, dict) else None
+    if not isinstance(identity, dict) or not isinstance(blob, str) or not blob:
+        raise RuntimeError("The login to import has no identity or credential")
+    try:
+        credential = json.loads(blob)
+    except ValueError:
+        credential = None
+    if not isinstance(credential, dict) or not isinstance(credential.get("claudeAiOauth"), dict):
+        raise RuntimeError("The credential to import is not a Claude login")
+    return identity, blob
+
+
+def enrol_noninteractive(from_dir=None, stdin=False, name=None, expect_email=None, as_json=False, runtime=None):
+    """`enrol` with its answers as flags, so the Orca plugin can enrol a login
+    it signed in without a terminal. Same enrolment as the menu, without the
+    prompts; the install side of _enrol_from is not repeated here."""
+
+    def refuse(message):
+        if as_json:
+            print(json.dumps({"ok": False, "error": message}))
+        else:
+            print("grazr: %s" % message)
+        return 1
+
+    home = managed_claude_home()
+    if home:
+        return refuse("this terminal %s" % (MANAGED_NOTICE % home))
+    runtime = runtime or _runtime()
+    paths, store, state_dir, _ = runtime
+    if from_dir:
+        from_dir = os.path.abspath(from_dir)
+    try:
+        if stdin:
+            identity, blob = _read_import(sys.stdin.read())
+            # Same guard as the live login's enrol: a swap must not run between the import and its record.
+            with _rotation_lock(state_dir) as acquired:
+                if not acquired:
+                    raise RuntimeError("Busy rotating, try again in a moment")
+                identifier = claude.enrol_identity(paths, store, name, identity, blob, expect_email)
+        else:
+            # An isolated login is one no swap touches, so no rotation lock is needed.
+            identifier = claude.enrol(paths, store, name, from_dir, expect_email)
+    except (RuntimeError, ValueError, OSError) as error:
+        return refuse(str(error))
+    # The enrol has happened by now, so nothing after it may turn it into a traceback.
+    try:
+        email = accounts.read(paths, identifier).get("email")
+    except (OSError, ValueError, AttributeError):
+        email = None
+    try:
+        unblocked = _unblock(state_dir, identifier, datetime.now(timezone.utc))
+    except Exception:
+        unblocked = False
+    if as_json:
+        print(json.dumps({"ok": True, "id": identifier, "name": name, "email": email, "unblocked": unblocked}))
+    else:
+        print("Enrolled %s as %s" % (name, identifier))
+        if unblocked:
+            print("It had failed before, and is back in rotation")
+    return 0
+
+
+def login_export(from_dir=None, runtime=None):
+    """Print an isolated login as one JSON line, for the plugin to pipe into
+    `enrol --stdin` on another host. That line is the only output: the
+    credential goes to stdout and nowhere else."""
+    home = managed_claude_home()
+    if home:
+        print("grazr: this terminal %s" % (MANAGED_NOTICE % home), file=sys.stderr)
+        return 1
+    runtime = runtime or _runtime()
+    try:
+        exported = claude.export_isolated_login(runtime.store, os.path.abspath(from_dir))
+    except (RuntimeError, ValueError, OSError) as error:
+        print("grazr: %s" % error, file=sys.stderr)
+        return 1
+    print(json.dumps(exported))
+    return 0
+
+
+def login_discard(from_dir=None, runtime=None):
+    """Remove a throwaway login and its config dir. Exit 0 when nothing was
+    there, since that is the state the caller wanted."""
+    home = managed_claude_home()
+    if home:
+        print("grazr: this terminal %s" % (MANAGED_NOTICE % home), file=sys.stderr)
+        return 1
+    runtime = runtime or _runtime()
+    if claude.discard_isolated_login(runtime.store, os.path.abspath(from_dir)):
+        return 0
+    print("grazr: could not remove the throwaway login from the keychain", file=sys.stderr)
+    return 1
+
+
 # Pinning an agent to an account. See pins.py.
 
 SHIM_LIB = ("pins.py", "stores.py", "atomic.py")
@@ -2200,7 +2456,7 @@ def token_forget(runtime=None, target=None):
     return 0
 
 
-SETTABLE = {"ACCOUNTS": None, "PINNED_ROTATION": pins.ROTATION_MODES, "ENABLED": ("0", "1")}
+SETTABLE = {"ACCOUNTS": None, "PINNED_ROTATION": pins.ROTATION_MODES, "ENABLED": ("0", "1"), "ULTRA_NO_SESSION": ("0", "1")}
 
 
 def set_setting(key, value, path=None, enrolled=None):

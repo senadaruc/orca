@@ -35,7 +35,7 @@ describe('resolveGrazrEngineRoot', () => {
 
 describe('bundled grazr engine resources', () => {
   it('reads the vendored engine version from the VERSION file beside the engine', async () => {
-    await expect(readGrazrEngineVersion(DEV_ENGINE_ROOT)).resolves.toBe('0.4.7+senad.6')
+    await expect(readGrazrEngineVersion(DEV_ENGINE_ROOT)).resolves.toBe('0.4.7+fork.13')
   })
 
   it('rejects with a readable message when no version file sits beside the engine', async () => {

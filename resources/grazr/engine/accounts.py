@@ -43,6 +43,18 @@ def has_parked_credential(store, identifier):
     return store.read_parked(identifier) is not None
 
 
+def plan_of(oauth):
+    """The plan an OAuth profile names, or None without an organizationType.
+    `oauth` is the `oauthAccount` object from Claude's config or a stored record."""
+    if not isinstance(oauth, dict) or not oauth.get("organizationType"):
+        return None
+    return {
+        "type": oauth["organizationType"],
+        "tier": oauth.get("organizationRateLimitTier"),
+        "seat_tier": oauth.get("userRateLimitTier"),
+    }
+
+
 def load(paths, names):
     """Enrolled accounts in the configured preference order. An unknown name is
     skipped rather than fatal, so a typo cannot stop rotation entirely."""
@@ -62,6 +74,7 @@ def load(paths, names):
             id=identifier,
             name=stored.get("name", identifier),
             snapshot=snapshot_from_json(stored.get("snapshot")),
+            plan=plan_of(stored.get("oauthAccount")),
         )
     if not names:
         return [by_name[name] for name in sorted(by_name)]
@@ -111,6 +124,15 @@ def first_reading_due(paths, identifier):
         return read(paths, identifier).get("first_reading_due") is True
     except (OSError, ValueError, AttributeError):
         return False
+
+
+def updated_at(paths, identifier):
+    """Unix seconds of the account's last recorded reading: the mtime of its
+    state file. None when the file cannot be read."""
+    try:
+        return os.path.getmtime(os.path.join(paths.accounts_dir, identifier + ".json"))
+    except OSError:
+        return None
 
 
 def snapshot_to_json(snapshot):
