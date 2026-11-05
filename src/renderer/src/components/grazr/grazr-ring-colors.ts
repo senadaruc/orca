@@ -59,10 +59,3 @@ export const WINDOW_TEXT_CLASS: Record<GrazrWindowTone, string> = {
   warning: 'text-status-warning',
   spent: ACCOUNT_SPENT_CLASS
 }
-
-// Why: the Progress primitive paints its indicator with bg-primary, so the tone is set through its slot.
-export const WINDOW_FILL_CLASS: Record<GrazrWindowTone, string> = {
-  fine: '[&_[data-slot=progress-indicator]]:bg-status-success',
-  warning: '[&_[data-slot=progress-indicator]]:bg-status-warning',
-  spent: '[&_[data-slot=progress-indicator]]:bg-destructive'
-}
