@@ -38,7 +38,7 @@ export function ptyScreenPane(ptyId: string): PtyScreenPane | null {
   return entry ? { tabId: entry.tabId, leafId: entry.leafId, terminal: entry.terminal } : null
 }
 
-/** The visible rows of the pane's screen, top to bottom, or null when the PTY has no pane. */
+/** The live rows of the pane's screen, top to bottom, or null when the PTY has no pane. */
 export function readPtyScreen(ptyId: string): string | null {
   const entry = entries.get(ptyId)
   if (!entry) {
@@ -46,8 +46,9 @@ export function readPtyScreen(ptyId: string): string | null {
   }
   const buffer = entry.terminal.buffer.active
   const rows: string[] = []
+  // Why: baseY is where the program draws; viewportY follows the user's scrolling into history.
   for (let row = 0; row < entry.terminal.rows; row++) {
-    rows.push(buffer.getLine(buffer.viewportY + row)?.translateToString(true) ?? '')
+    rows.push(buffer.getLine(buffer.baseY + row)?.translateToString(true) ?? '')
   }
   return rows.join('\n')
 }
