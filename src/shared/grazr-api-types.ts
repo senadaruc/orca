@@ -1,5 +1,6 @@
 import type { GrazrHostRef } from './grazr-host'
 import type { GrazrStatusReport } from './grazr-status-report'
+import type { GrazrSyncSnapshot } from './grazr-sync-types'
 
 export type GrazrHostOutcome =
   | { kind: 'ok'; report: GrazrStatusReport; fetchedAt: number }
@@ -34,9 +35,22 @@ export type GrazrApi = {
   refresh(host: GrazrHostRef): Promise<GrazrActionResult>
   swap(host: GrazrHostRef, name?: string): Promise<GrazrActionResult>
   setEnabled(host: GrazrHostRef, enabled: boolean): Promise<GrazrActionResult>
+  /** Writes the host's ACCOUNTS order, in that host's own account names. */
+  setAccounts(host: GrazrHostRef, names: readonly string[]): Promise<GrazrActionResult>
   install(host: GrazrHostRef, force: boolean): Promise<GrazrActionResult>
   uninstall(host: GrazrHostRef): Promise<GrazrActionResult>
   deploy(host: GrazrHostRef): Promise<GrazrActionResult>
   enrolCommand(host: GrazrHostRef): Promise<{ command: string } | { error: string }>
   drainNotices(host: GrazrHostRef): Promise<GrazrNotice[]>
+}
+
+/** The account sync across this computer and the hosts Orca reaches, kept by the main process. */
+export type GrazrSyncApi = {
+  syncState(): Promise<GrazrSyncSnapshot>
+  syncSetEnabled(enabled: boolean): Promise<GrazrSyncSnapshot>
+  syncApply(): Promise<GrazrSyncSnapshot>
+  syncSetIncluded(deviceKey: string, included: boolean): Promise<GrazrSyncSnapshot>
+  /** One round now, after an action that may have changed a host. */
+  syncKick(): Promise<void>
+  onSyncStateChanged(callback: (snapshot: GrazrSyncSnapshot) => void): () => void
 }

@@ -100,7 +100,7 @@ function blockedReason(account: GrazrStatusAccount): string | null {
 // The engine's shortfall: the first live entry whose group has a threshold and that sits below it.
 // Scoped (per-model) entries count only when modelLimits is on, as the engine's _bound keeps them only then.
 // An account with a shortfall is spent, whichever of its windows the view shows.
-function shortfallOf(
+export function shortfallOf(
   snapshot: GrazrSnapshotEntry[] | null,
   thresholds: Thresholds,
   now: Date,

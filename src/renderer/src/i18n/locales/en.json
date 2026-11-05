@@ -75,6 +75,14 @@
       "subtitle": "{{label}} · swaps below {{session}}% 5h · {{weekly}}% week",
       "swapNext": "Swap to Next Account",
       "swapToThis": "Swap to this account",
+      "sync": {
+        "apply": "Apply",
+        "devices": "Devices in the sync",
+        "hint": "Last change wins. Pins and thresholds stay per device.",
+        "onlyOne": "Only {{name}} is in the sync, nothing to sync yet",
+        "reauthenticate": "Re-authenticate…",
+        "title": "Keep accounts in sync across devices"
+      },
       "takeOver": "Take over the status line",
       "terminalFailed": "Could not open a terminal for the login.",
       "title": "Claude Accounts",
@@ -118,6 +126,24 @@
     "modelSwitch": {
       "body": "Its Fable allowance ran out and usage credits are off, so it continues on {{model}}.",
       "title": "grazr: {{name}} switched to {{model}}"
+    },
+    "sync": {
+      "allInSync": "All devices in sync",
+      "blocked": "{{who}}: {{account}} is blocked ({{reason}}), still on {{active}}",
+      "didNotMove": "did not move",
+      "follow": "{{followers}} follow {{from}}",
+      "followChanged": "{{followers}} follow {{from}} (changed {{changed}})",
+      "following": "following {{source}}",
+      "follows": "{{followers}} follows {{from}}",
+      "followsChanged": "{{followers}} follows {{from}} (changed {{changed}})",
+      "needsUpdate": "grazr on {{who}} needs {{version}} or later",
+      "noAccount": "no account",
+      "notEnrolled": "{{who}}: {{account}} is not enrolled",
+      "nowOn": "grazr: {{device}} now on {{account}}",
+      "paused": "Sync paused: {{a}} and {{b}} keep undoing each other. Check that their thresholds match.",
+      "refused": "{{who}}: {{words}}",
+      "willMove": "{{who}} will move to {{account}} and take {{from}}'s order",
+      "willTakeOrder": "{{who}} will take {{from}}'s order"
     },
     "web": {
       "desktopOnly": "Grazr runs in the desktop app on the computer that owns the host.",

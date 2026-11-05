@@ -35,6 +35,7 @@ import { grazrChipCopy } from './grazr-chip-copy'
 import { openGrazrEnrolTerminal } from './grazr-enrol-terminal'
 import { GrazrOutcomeBody } from './GrazrOutcomeBody'
 import { GrazrRotationControls } from './GrazrRotationControls'
+import { GrazrSyncSection } from './GrazrSyncSection'
 import { useGrazrHostStatus } from './use-grazr-host-status'
 
 const POLL_MS = 60_000
@@ -306,6 +307,10 @@ function GrazrAccountsBody({
             onRotatingChange={(checked) =>
               void run(() => window.api.grazr.setEnabled(host, checked))
             }
+          />
+          <GrazrSyncSection
+            host={host}
+            onReauthenticate={terminalAvailable ? () => void startLogin() : null}
           />
         </div>
       ) : (

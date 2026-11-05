@@ -399,3 +399,22 @@ describe('createGrazrService owner refusals', () => {
     })
   })
 })
+
+describe('createGrazrService setAccounts', () => {
+  it('writes the order as one ACCOUNTS value and hands back an engine refusal in its words', async () => {
+    const calls: Call[] = []
+    const grazr = service(scriptedRunner({ stdout: 'ACCOUNTS=gmail icloud' }, calls))
+    expect(await grazr.setAccounts(LOCAL, ['gmail', 'icloud'])).toEqual({
+      ok: true,
+      message: 'ACCOUNTS=gmail icloud'
+    })
+    expect(calls).toEqual([{ verb: 'set', args: ['ACCOUNTS', 'gmail icloud'] }])
+
+    const older = service(
+      scriptedRunner({ code: 1, stdout: 'grazr: only ENABLED, MODEL_LIMITS can be set this way\n' })
+    )
+    const refused = await older.setAccounts(LOCAL, ['gmail'])
+    expect(refused.ok).toBe(false)
+    expect(refused.message).toContain('can be set this way')
+  })
+})

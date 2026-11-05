@@ -78,6 +78,8 @@ export function useGrazrHostStatus(
         for (const notice of notices) {
           toast.message(title, { description: [notice.title, notice.body].join('\n') })
         }
+        // An action may have changed this host's rotation: the sync looks again now, not in a minute.
+        void window.api.grazr.syncKick().catch(() => undefined)
         await refresh()
         return result
       } catch (error) {

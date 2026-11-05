@@ -290,6 +290,7 @@ export function createGrazrService(deps: GrazrServiceDeps): GrazrApi {
     refresh: (host) => action(host, 'refresh', []),
     swap: (host, name) => action(host, 'swap', name === undefined ? [] : [name]),
     setEnabled: (host, enabled) => action(host, 'set', ['ENABLED', enabled ? '1' : '0']),
+    setAccounts: (host, names) => action(host, 'set', ['ACCOUNTS', names.join(' ')]),
     install: (host, force) => action(host, 'install', force ? ['--force'] : []),
     uninstall: (host) => action(host, 'uninstall', []),
     deploy: (host) => serial(host, async () => deploy(deps.resolve(host))),

@@ -6,7 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   GrazrActionResult,
   GrazrApi,
-  GrazrHostStatus
+  GrazrHostStatus,
+  GrazrSyncApi
 } from '../../../../shared/grazr-api-types'
 import type { GrazrHostRef } from '../../../../shared/grazr-host'
 import { useGrazrHostStatus } from './use-grazr-host-status'
@@ -26,7 +27,7 @@ function statusFor(label: string): GrazrHostStatus {
   }
 }
 
-type Api = { [K in keyof GrazrApi]: ReturnType<typeof vi.fn> }
+type Api = { [K in keyof (GrazrApi & GrazrSyncApi)]: ReturnType<typeof vi.fn> }
 
 function fakeApi(): Api {
   return {
@@ -38,7 +39,14 @@ function fakeApi(): Api {
     uninstall: vi.fn(),
     deploy: vi.fn(),
     enrolCommand: vi.fn(),
-    drainNotices: vi.fn(async () => [])
+    drainNotices: vi.fn(async () => []),
+    setAccounts: vi.fn(),
+    syncState: vi.fn(),
+    syncSetEnabled: vi.fn(),
+    syncApply: vi.fn(),
+    syncSetIncluded: vi.fn(),
+    syncKick: vi.fn(async () => undefined),
+    onSyncStateChanged: vi.fn(() => () => {})
   }
 }
 

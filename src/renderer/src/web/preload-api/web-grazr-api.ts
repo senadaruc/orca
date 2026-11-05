@@ -1,11 +1,20 @@
 import { translate } from '@/i18n/i18n'
 import type { PreloadApi } from '../../../../preload/api-types'
+import type { GrazrSyncSnapshot } from '../../../../shared/grazr-sync-types'
 
 function desktopOnlyMessage(): string {
   return translate(
     'grazr.web.desktopOnly',
     'Grazr runs in the desktop app on the computer that owns the host.'
   )
+}
+
+// The sync lives in the desktop app's main process, so the web client sees it off.
+const SYNC_OFF: GrazrSyncSnapshot = {
+  enabled: false,
+  applied: false,
+  devices: [],
+  status: { kind: 'off' }
 }
 
 function rejectDesktopOnly(): Promise<never> {
@@ -26,10 +35,17 @@ export function createGrazrApi(): PreloadApi['grazr'] {
     refresh: rejectDesktopOnly,
     swap: rejectDesktopOnly,
     setEnabled: rejectDesktopOnly,
+    setAccounts: rejectDesktopOnly,
     install: rejectDesktopOnly,
     uninstall: rejectDesktopOnly,
     deploy: rejectDesktopOnly,
     enrolCommand: () => Promise.resolve({ error: desktopOnlyMessage() }),
-    drainNotices: () => Promise.resolve([])
+    drainNotices: () => Promise.resolve([]),
+    syncState: () => Promise.resolve(SYNC_OFF),
+    syncSetEnabled: rejectDesktopOnly,
+    syncApply: rejectDesktopOnly,
+    syncSetIncluded: rejectDesktopOnly,
+    syncKick: () => Promise.resolve(),
+    onSyncStateChanged: () => () => {}
   }
 }
