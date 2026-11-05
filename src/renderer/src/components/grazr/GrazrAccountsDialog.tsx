@@ -17,7 +17,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
-import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { SettingsSegmentedControl } from '@/components/settings/SettingsFormControls'
 import { translate } from '@/i18n/i18n'
@@ -35,6 +34,7 @@ import { GrazrClockRing } from './GrazrClockRing'
 import { grazrChipCopy } from './grazr-chip-copy'
 import { openGrazrEnrolTerminal } from './grazr-enrol-terminal'
 import { GrazrOutcomeBody } from './GrazrOutcomeBody'
+import { GrazrRotationControls } from './GrazrRotationControls'
 import { useGrazrHostStatus } from './use-grazr-host-status'
 
 const POLL_MS = 60_000
@@ -300,16 +300,13 @@ function GrazrAccountsBody({
             onSwap={(name) => void run(() => window.api.grazr.swap(host, name))}
             onReauthenticate={() => void startLogin()}
           />
-          <label className="flex items-center justify-between gap-3 text-sm">
-            <span>{translate('grazr.dialog.rotateAutomatically', 'Rotate automatically')}</span>
-            <Switch
-              checked={report.settings.enabled}
-              disabled={busy}
-              onCheckedChange={(checked) =>
-                void run(() => window.api.grazr.setEnabled(host, checked))
-              }
-            />
-          </label>
+          <GrazrRotationControls
+            rotating={report.settings.enabled}
+            busy={busy}
+            onRotatingChange={(checked) =>
+              void run(() => window.api.grazr.setEnabled(host, checked))
+            }
+          />
         </div>
       ) : (
         <GrazrOutcomeBody

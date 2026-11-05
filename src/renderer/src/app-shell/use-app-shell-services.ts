@@ -24,6 +24,7 @@ import { useBrowserIdentityMigrationNotice } from '../components/browser-pane/br
 import { useBrowserClientHostedDownloadNotices } from '../components/browser-pane/browser-client-hosted-download-notices'
 import { useCodexTerminalServerIsolationNotice } from '../components/terminal-pane/codex-terminal-server-isolation-notice'
 import { useCodexSharedSettingsNotice } from '../components/terminal-pane/codex-shared-settings-notice'
+import { useGrazrModelSwitchWatcher } from '../components/grazr/use-grazr-model-switch-watcher'
 import { useVisibleReviewRefreshReporting } from './use-visible-review-refresh-reporting'
 import { useVisibleHostedReviewRefresh } from './use-visible-hosted-review-refresh'
 import { useProfileStateSaveDelayNotice } from './use-profile-state-save-delay-notice'
@@ -68,4 +69,5 @@ export function useAppShellServices(): void {
   useBrowserClientHostedDownloadNotices()
   useCodexTerminalServerIsolationNotice()
   useCodexSharedSettingsNotice()
+  useGrazrModelSwitchWatcher()
 }

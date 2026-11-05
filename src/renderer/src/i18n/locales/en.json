@@ -37,6 +37,8 @@
       "accountActions": "Account actions",
       "addAccount": "Add Account…",
       "asOf": "as of {{time}}",
+      "autoModelSwitch": "When Fable runs out, switch model and continue",
+      "autoModelSwitchHint": "Agents keep working on the fallback model. Never spends credits.",
       "chip": {
         "engineError": "engine error",
         "foreign": "another grazr owns the status line",
@@ -112,6 +114,10 @@
       "swapNext": "Swap to the next account now",
       "switchShared": "Switch Shared Account",
       "unavailable": "Not available for this host"
+    },
+    "modelSwitch": {
+      "body": "Its Fable allowance ran out and usage credits are off, so it continues on {{model}}.",
+      "title": "grazr: {{name}} switched to {{model}}"
     },
     "web": {
       "desktopOnly": "Grazr runs in the desktop app on the computer that owns the host.",
