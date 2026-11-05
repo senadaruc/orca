@@ -24,10 +24,21 @@ const SnapshotEntrySchema = z.object({
   resets_at: z.string().nullable().catch(null)
 })
 
+// The subscription, from the account's OAuth profile: organizationType, organizationRateLimitTier, userRateLimitTier.
+const PlanSchema = z.object({
+  type: z.string(),
+  tier: z.string().nullable().catch(null),
+  seat_tier: z.string().nullable().catch(null)
+})
+
 const AccountSchema = z.object({
   id: z.string(),
   name: z.string().catch(''),
   email: z.string().nullable().catch(null),
+  organization: z.string().nullable().catch(null),
+  plan: PlanSchema.nullable().catch(null),
+  // When the engine last wrote this account's reading, in epoch seconds.
+  updated: z.number().nullable().catch(null),
   parked: z.boolean().catch(false),
   in_order: z.boolean().catch(false),
   first_reading_due: z.boolean().catch(false),
@@ -63,6 +74,8 @@ const ReportSchema = z.object({
     .catch(null),
   accounts: listOf(AccountSchema),
   order: listOf(z.string()),
+  // When this host's rotation last changed (epoch seconds): the newer of a config write and the last swap.
+  changed_at: z.number().nullable().catch(null),
   settings: z
     .object({
       enabled: z.boolean().catch(false),
@@ -77,6 +90,33 @@ const ReportSchema = z.object({
 export type GrazrStatusReport = z.infer<typeof ReportSchema>
 export type GrazrStatusAccount = z.infer<typeof AccountSchema>
 export type GrazrSnapshotEntry = z.infer<typeof SnapshotEntrySchema>
+export type GrazrPlan = z.infer<typeof PlanSchema>
+
+const PLAN_NAMES: Record<string, string> = {
+  claude_pro: 'Pro',
+  claude_max: 'Max',
+  claude_team: 'Team',
+  claude_enterprise: 'Enterprise'
+}
+
+// "5x" from "default_claude_max_5x".
+function multiplierOf(tier: string | null): string | null {
+  const last = tier?.split('_').at(-1)
+  return last !== undefined && /^\d+x$/.test(last) ? last : null
+}
+
+/** "Pro", "Max 20x", "Team 5x": the plan with its usage multiplier, the seat's own before the organization's. */
+export function grazrPlanLabel(plan: GrazrPlan): string {
+  const name =
+    PLAN_NAMES[plan.type] ??
+    plan.type
+      .replace(/^claude_/, '')
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  const multiplier = multiplierOf(plan.seat_tier) ?? multiplierOf(plan.tier)
+  return multiplier === null ? name : `${name} ${multiplier}`
+}
 
 /** Null when the text is not a JSON object; a JSON object that lacks fields still parses. */
 export function parseGrazrStatusReport(text: string): GrazrStatusReport | null {

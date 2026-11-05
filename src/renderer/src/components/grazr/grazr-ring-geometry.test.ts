@@ -3,7 +3,7 @@ import type { GrazrRingSegment } from '../../../../shared/grazr-rotation-view'
 import { arcPath, ringSegments } from './grazr-ring-geometry'
 
 function segment(overrides: Partial<GrazrRingSegment> & { index: number }): GrazrRingSegment {
-  return { name: `acct${overrides.index}`, remaining: 50, state: 'ok', ...overrides }
+  return { name: `acct${overrides.index}`, remaining: 50, models: {}, state: 'ok', ...overrides }
 }
 
 describe('arcPath', () => {
@@ -55,5 +55,25 @@ describe('ringSegments', () => {
       gapDeg: 4
     })
     expect(active.fillD).toBeNull()
+  })
+
+  it('draws one inner ring per model scope inside the band, filled by what that model has left', () => {
+    const [first, second] = ringSegments(
+      [
+        segment({ index: 1, state: 'active', models: { Fable: 50 } }),
+        segment({ index: 2, state: 'ok', models: { Fable: null } })
+      ],
+      { radius: 80, gapDeg: 4, bandWidth: 14, modelScopes: ['Fable'] }
+    )
+    expect(first.models.map((m) => m.scope)).toEqual(['Fable'])
+    // 80 - 7 (half band) - 7 (gap) - 3 (half ring): the first model ring sits at radius 63.
+    expect(first.models[0]?.d).toMatch(/^M [\d.]+ [\d.]+ A 63 63 /)
+    expect(first.models[0]?.fillD).toMatch(/^M /)
+    expect(second.models[0]?.fillD).toBeNull()
+  })
+
+  it('draws no inner ring without model scopes', () => {
+    const [only] = ringSegments([segment({ index: 1 })], { radius: 80, gapDeg: 4 })
+    expect(only.models).toEqual([])
   })
 })

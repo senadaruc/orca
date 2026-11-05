@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseGrazrStatusReport } from './grazr-status-report'
+import { grazrPlanLabel, parseGrazrStatusReport } from './grazr-status-report'
 
 describe('parseGrazrStatusReport', () => {
   it('returns null when the text is not a JSON object', () => {
@@ -18,8 +18,51 @@ describe('parseGrazrStatusReport', () => {
       active: null,
       accounts: [],
       order: [],
+      changed_at: null,
       settings: { enabled: false, model_limits: false, thresholds: { session: 0, weekly: 0 } }
     })
+  })
+
+  it('reads each account plan, organization and reading time, absent on an older engine', () => {
+    const report = parseGrazrStatusReport(
+      JSON.stringify({
+        changed_at: 1700000000.5,
+        accounts: [
+          {
+            id: 'a',
+            name: 'a',
+            organization: "a's Organization",
+            plan: { type: 'claude_max', tier: 'default_claude_max_20x', seat_tier: null },
+            updated: 1699999000
+          },
+          { id: 'b', name: 'b', plan: { tier: 'no type' } }
+        ]
+      })
+    )
+    expect(report?.changed_at).toBe(1700000000.5)
+    expect(report?.accounts[0]).toMatchObject({
+      organization: "a's Organization",
+      plan: { type: 'claude_max', tier: 'default_claude_max_20x', seat_tier: null },
+      updated: 1699999000
+    })
+    expect(report?.accounts[1]).toMatchObject({ organization: null, plan: null, updated: null })
+  })
+
+  it('labels a plan with its multiplier, the seat tier before the organization tier', () => {
+    expect(grazrPlanLabel({ type: 'claude_pro', tier: null, seat_tier: null })).toBe('Pro')
+    expect(
+      grazrPlanLabel({ type: 'claude_max', tier: 'default_claude_max_20x', seat_tier: null })
+    ).toBe('Max 20x')
+    expect(
+      grazrPlanLabel({
+        type: 'claude_team',
+        tier: 'default_claude_max_20x',
+        seat_tier: 'default_claude_max_5x'
+      })
+    ).toBe('Team 5x')
+    expect(grazrPlanLabel({ type: 'claude_free_trial', tier: 'x', seat_tier: null })).toBe(
+      'Free Trial'
+    )
   })
 
   it('reads a managed profile given as a config path, a flag, or null as a boolean', () => {

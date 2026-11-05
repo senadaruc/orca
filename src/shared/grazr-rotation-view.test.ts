@@ -3,9 +3,12 @@ import { parseGrazrStatusReport, type GrazrStatusReport } from './grazr-status-r
 import {
   buildGrazrRotationView,
   centre,
+  modelScopes,
   nextAccount,
   orderedAccounts,
+  relativeAge,
   rowState,
+  windowBars,
   windowOf,
   type GrazrRotationRow
 } from './grazr-rotation-view'
@@ -460,6 +463,7 @@ describe('centre', () => {
     expect(centre(report, 'session', { now: NOW })).toEqual({
       name: 'a',
       percentText: '42% left',
+      modelLines: [],
       hint: 'fine',
       next: 'b',
       tone: 'fine'
@@ -496,6 +500,7 @@ describe('centre', () => {
     expect(centre(none, 'session', { now: NOW })).toEqual({
       name: '—',
       percentText: '—',
+      modelLines: [],
       hint: 'no active login',
       next: null,
       tone: 'none'
@@ -616,6 +621,9 @@ describe('buildGrazrRotationView', () => {
       id: 'q',
       name: "o'brien $x",
       email: null,
+      organization: null,
+      plan: null,
+      updated: null,
       parked: true,
       in_order: true,
       blocked: null,
@@ -624,5 +632,119 @@ describe('buildGrazrRotationView', () => {
     })
     const names = buildGrazrRotationView(report, 'session', NOW, ZONE).rows.map((r) => r.name)
     expect(names).toContain("o'brien $x")
+  })
+})
+
+// A per-model weekly entry, as the engine reports Claude's Fable limit.
+const fableWeek = (remaining: number, resets_at: string | null = null) => ({
+  kind: 'weekly_fable',
+  scope: 'Fable',
+  group: 'weekly',
+  remaining,
+  resets_at
+})
+
+describe('windowBars', () => {
+  it('lists the 5h window, the all-models week, then each per-model week, with what is left and the reset', () => {
+    const bars = windowBars(
+      [
+        fableWeek(80, '2026-10-27T09:00:00+02:00'),
+        weekly(70, '2026-10-27T09:00:00+02:00'),
+        session(42.4, '2026-10-21T18:00:00+02:00')
+      ],
+      thresholds,
+      NOW,
+      ZONE
+    )
+    expect(bars).toEqual([
+      { label: '5h', left: 42, tone: 'fine', resetText: 'resets Wed 18:00' },
+      { label: 'Week', left: 70, tone: 'fine', resetText: 'resets Tue 08:00' },
+      { label: 'Fable week', left: 80, tone: 'fine', resetText: 'resets Tue 08:00' }
+    ])
+  })
+
+  it('reads a window past its reset as full, warns below the threshold, and calls 2% or less spent', () => {
+    const bars = windowBars(
+      [
+        session(5, '2026-10-20T18:00:00+02:00'),
+        weekly(12, '2026-10-27T09:00:00+02:00'),
+        fableWeek(2)
+      ],
+      thresholds,
+      NOW,
+      ZONE
+    )
+    expect(bars.map((b) => [b.left, b.tone, b.resetText])).toEqual([
+      [100, 'fine', 'reset since'],
+      [12, 'warning', 'resets Tue 08:00'],
+      [2, 'spent', '']
+    ])
+  })
+
+  it('skips an entry without a reading and gives an unread account no bars', () => {
+    expect(windowBars([{ ...session(50), remaining: null }], thresholds, NOW, ZONE)).toEqual([])
+    expect(windowBars(null, thresholds, NOW, ZONE)).toEqual([])
+  })
+})
+
+describe('per-model windows in the view', () => {
+  const withFable = () => {
+    const report = fixture()
+    accountNamed(report, 'a').snapshot?.push(fableWeek(100, '2026-10-27T09:00:00+02:00'))
+    accountNamed(report, 'b').snapshot?.push(fableWeek(35))
+    return report
+  }
+
+  it('names each model with a weekly limit of its own once, sorted', () => {
+    expect(modelScopes(fixture())).toEqual([])
+    expect(modelScopes(withFable())).toEqual(['Fable'])
+  })
+
+  it('on the weekly view gives every segment its per-model left and the centre a model line', () => {
+    const view = buildGrazrRotationView(withFable(), 'weekly', NOW, ZONE)
+    expect(view.modelScopes).toEqual(['Fable'])
+    expect(view.segments.map((s) => s.models)).toEqual([
+      { Fable: 100 },
+      { Fable: 35 },
+      { Fable: null },
+      { Fable: null }
+    ])
+    expect(view.centre.modelLines).toEqual(['Fable 100% left'])
+    expect(view.rows[0]?.windows.map((w) => w.label)).toEqual(['5h', 'Week', 'Fable week'])
+  })
+
+  it('on the 5h view shows no model rings or lines', () => {
+    const view = buildGrazrRotationView(withFable(), 'session', NOW, ZONE)
+    expect(view.modelScopes).toEqual([])
+    expect(view.segments[0]?.models).toEqual({})
+    expect(view.centre.modelLines).toEqual([])
+  })
+
+  it('carries the plan label, the organization and the reading age on each row', () => {
+    const report = fixture()
+    const a = accountNamed(report, 'a')
+    a.plan = { type: 'claude_max', tier: 'default_claude_max_20x', seat_tier: null }
+    a.organization = 'Imperum'
+    a.updated = NOW.getTime() / 1000 - 8 * 86_400
+    const [row, other] = buildGrazrRotationView(report, 'weekly', NOW, ZONE).rows
+    expect(row).toMatchObject({
+      plan: 'Max 20x',
+      organization: 'Imperum',
+      readingFrom: '1 wk. ago'
+    })
+    expect(other).toMatchObject({ plan: null, organization: null, readingFrom: null })
+    expect(other?.windows.map((w) => w.label)).toEqual(['5h', 'Week'])
+  })
+})
+
+describe('relativeAge', () => {
+  it('says weeks, days, hours or minutes ago, and just now under a minute', () => {
+    const seconds = NOW.getTime() / 1000
+    expect(relativeAge(seconds - 15 * 86_400, NOW)).toBe('2 wk. ago')
+    expect(relativeAge(seconds - 3 * 86_400, NOW)).toBe('3 days ago')
+    expect(relativeAge(seconds - 2 * 3600, NOW)).toBe('2 hr. ago')
+    expect(relativeAge(seconds - 90, NOW)).toBe('1 min. ago')
+    expect(relativeAge(seconds - 5, NOW)).toBe('just now')
+    expect(relativeAge(seconds + 100, NOW)).toBe('just now')
   })
 })

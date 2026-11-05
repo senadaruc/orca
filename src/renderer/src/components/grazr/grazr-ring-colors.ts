@@ -1,7 +1,8 @@
 import type {
   GrazrCentreTone,
   GrazrRowStatus,
-  GrazrSegmentState
+  GrazrSegmentState,
+  GrazrWindowTone
 } from '../../../../shared/grazr-rotation-view'
 
 // Why: the tokens come from main.css and the usage chip's palette, so both themes read the same way.
@@ -48,4 +49,20 @@ export const ROW_DOT_CLASS: Record<GrazrRowStatus, string> = {
   'not-enrolled': 'bg-muted-foreground/20',
   unread: 'bg-muted-foreground/20',
   ok: 'bg-status-success/40'
+}
+
+// The inner model rings: a muted track under a fill in the segment's own colour.
+export const MODEL_RING_TRACK_CLASS = 'text-muted-foreground/20'
+
+export const WINDOW_TEXT_CLASS: Record<GrazrWindowTone, string> = {
+  fine: ACCOUNT_OK_CLASS,
+  warning: 'text-status-warning',
+  spent: ACCOUNT_SPENT_CLASS
+}
+
+// Why: the Progress primitive paints its indicator with bg-primary, so the tone is set through its slot.
+export const WINDOW_FILL_CLASS: Record<GrazrWindowTone, string> = {
+  fine: '[&_[data-slot=progress-indicator]]:bg-status-success',
+  warning: '[&_[data-slot=progress-indicator]]:bg-status-warning',
+  spent: '[&_[data-slot=progress-indicator]]:bg-destructive'
 }

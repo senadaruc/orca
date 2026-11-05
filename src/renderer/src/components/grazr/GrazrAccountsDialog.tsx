@@ -287,7 +287,11 @@ function GrazrAccountsBody({
               ]}
             />
           </div>
-          <GrazrClockRing segments={view.segments} centre={view.centre} />
+          <GrazrClockRing
+            segments={view.segments}
+            centre={view.centre}
+            modelScopes={view.modelScopes}
+          />
           <GrazrAccountRows
             rows={view.rows}
             parkedNames={new Set(report.accounts.filter((a) => a.parked).map((a) => a.name))}

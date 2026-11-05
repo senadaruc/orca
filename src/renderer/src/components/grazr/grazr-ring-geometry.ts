@@ -5,6 +5,16 @@ const RING_CENTRE = 110
 const BADGE_OFFSET = 20
 const MIN_SWEEP = 0.1
 const MAX_SWEEP = 359.9
+// HerdrM's dial: each model with a weekly limit of its own gets a thinner ring inside the band.
+export const MODEL_RING_WIDTH = 6
+const MODEL_RING_GAP = 7
+const MODEL_RING_SPACING = 3
+
+export type GrazrModelRingPath = {
+  scope: string
+  d: string
+  fillD: string | null
+}
 
 export type GrazrRingPath = {
   index: number
@@ -12,6 +22,14 @@ export type GrazrRingPath = {
   fillD: string | null
   badge: { x: number; y: number }
   state: GrazrSegmentState
+  models: GrazrModelRingPath[]
+}
+
+export type GrazrRingLayout = {
+  radius: number
+  gapDeg: number
+  bandWidth?: number
+  modelScopes?: string[]
 }
 
 const round = (n: number): number => Number(n.toFixed(2))
@@ -37,20 +55,46 @@ export function arcPath(
   return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`
 }
 
+// The first model ring sits a gap inside the band; each further one a spacing further in.
+export function modelRingRadius(index: number, { radius, bandWidth = 0 }: GrazrRingLayout): number {
+  return (
+    radius -
+    bandWidth / 2 -
+    MODEL_RING_GAP -
+    MODEL_RING_WIDTH / 2 -
+    index * (MODEL_RING_WIDTH + MODEL_RING_SPACING)
+  )
+}
+
+// Where the rings end towards the centre, so the centre text can stay inside the hole.
+export function ringInnerEdge(layout: GrazrRingLayout): number {
+  const scopes = layout.modelScopes ?? []
+  return scopes.length === 0
+    ? layout.radius - (layout.bandWidth ?? 0) / 2
+    : modelRingRadius(scopes.length - 1, layout) - MODEL_RING_WIDTH / 2
+}
+
+function fillArc(radius: number, start: number, end: number, left: number | null): string | null {
+  if (left === null || left <= 0) {
+    return null
+  }
+  const share = Math.min(left, 100) / 100
+  return arcPath(RING_CENTRE, RING_CENTRE, radius, start, start + (end - start) * share)
+}
+
 // Equal segments with a gap centred on each boundary; the fill arc shows the active account's remaining share.
+// Each model ring is filled by what that account has left of the model's week.
 export function ringSegments(
   segments: GrazrRingSegment[],
-  { radius, gapDeg }: { radius: number; gapDeg: number }
+  layout: GrazrRingLayout
 ): GrazrRingPath[] {
+  const { radius, gapDeg } = layout
+  const scopes = layout.modelScopes ?? []
   const step = segments.length > 0 ? 360 / segments.length : 0
   return segments.map((segment, i) => {
     const start = i * step + gapDeg / 2
     const end = start + step - gapDeg
-    const share = Math.min(segment.remaining ?? 0, 100) / 100
-    const fillD =
-      segment.state === 'active' && typeof segment.remaining === 'number' && segment.remaining > 0
-        ? arcPath(RING_CENTRE, RING_CENTRE, radius, start, start + (end - start) * share)
-        : null
+    const fillD = segment.state === 'active' ? fillArc(radius, start, end, segment.remaining) : null
     const [x, y] = pointAt(
       RING_CENTRE,
       RING_CENTRE,
@@ -62,7 +106,15 @@ export function ringSegments(
       d: arcPath(RING_CENTRE, RING_CENTRE, radius, start, end),
       fillD,
       badge: { x, y },
-      state: segment.state
+      state: segment.state,
+      models: scopes.map((scope, modelIndex) => {
+        const modelRadius = modelRingRadius(modelIndex, layout)
+        return {
+          scope,
+          d: arcPath(RING_CENTRE, RING_CENTRE, modelRadius, start, end),
+          fillD: fillArc(modelRadius, start, end, segment.models[scope] ?? null)
+        }
+      })
     }
   })
 }

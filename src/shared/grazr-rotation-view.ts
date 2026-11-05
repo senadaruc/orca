@@ -1,14 +1,35 @@
-import type {
-  GrazrSnapshotEntry,
-  GrazrStatusAccount,
-  GrazrStatusReport
+import {
+  grazrPlanLabel,
+  type GrazrSnapshotEntry,
+  type GrazrStatusAccount,
+  type GrazrStatusReport
 } from './grazr-status-report'
+import {
+  formatReset,
+  isLive,
+  modelScopes,
+  modelWindowLeft,
+  relativeAge,
+  thresholdOf,
+  windowBars,
+  windowOf,
+  type GrazrThresholds,
+  type GrazrWindowBar,
+  type GrazrWindowView
+} from './grazr-usage-windows'
+
+export { modelScopes, relativeAge, windowBars, windowOf }
+export type {
+  GrazrThresholds,
+  GrazrWindowBar,
+  GrazrWindowTone,
+  GrazrWindowView
+} from './grazr-usage-windows'
 
 // A port of the plugin's lib/panel-data.mjs. The engine's rotation rules live in its core.py;
 // this mirrors them so the dialog and menu can show what the engine will do next.
 
-export type GrazrWindowView = 'session' | 'weekly'
-type Thresholds = GrazrStatusReport['settings']['thresholds']
+type Thresholds = GrazrThresholds
 type Settings = GrazrStatusReport['settings']
 
 // An ordered name with no record, so the view can say not enrolled.
@@ -30,6 +51,8 @@ export type GrazrCentreTone = 'fine' | 'warning' | 'spent' | 'blocked' | 'none'
 export type GrazrRotationCentre = {
   name: string
   percentText: string
+  // The active account's per-model weeks ("Fable 100% left"), on the weekly view.
+  modelLines: string[]
   hint: string
   next: string | null
   tone: GrazrCentreTone
@@ -38,6 +61,11 @@ export type GrazrRotationRow = {
   index: number
   name: string
   email: string | null
+  organization: string | null
+  plan: string | null
+  // "1 wk. ago": when the engine last read this account, relative to now.
+  readingFrom: string | null
+  windows: GrazrWindowBar[]
   percent: number | null
   status: GrazrRowStatus
   label: string
@@ -49,12 +77,16 @@ export type GrazrRingSegment = {
   index: number
   name: string
   remaining: number | null
+  // What is left of each per-model week, by scope, for the inner rings; null without a reading.
+  models: Record<string, number | null>
   state: GrazrSegmentState
 }
 export type GrazrRotationView = {
   centre: GrazrRotationCentre
   rows: GrazrRotationRow[]
   segments: GrazrRingSegment[]
+  // The models with a weekly limit of their own ("Fable"), one inner ring each; only on the weekly view.
+  modelScopes: string[]
 }
 
 function isMissing(entry: GrazrAccountEntry): entry is GrazrMissingAccount {
@@ -63,40 +95,6 @@ function isMissing(entry: GrazrAccountEntry): entry is GrazrMissingAccount {
 
 function blockedReason(account: GrazrStatusAccount): string | null {
   return account.blocked !== null && account.blocked !== '' ? account.blocked : null
-}
-
-// The engine's _live: an entry whose reset is at or before now has run out and counts as absent.
-// A missing or unreadable reset time stays live, as the engine keeps it.
-function isLive(entry: GrazrSnapshotEntry, now: Date): boolean {
-  if (entry.resets_at === null) {
-    return true
-  }
-  const at = Date.parse(entry.resets_at)
-  return Number.isNaN(at) || at > now.getTime()
-}
-
-// The window a view shows: the account-wide entry of its group (scope null, as the engine reports it), if still live.
-// A per-model weekly entry is never the one shown.
-export function windowOf(
-  snapshot: GrazrSnapshotEntry[] | null,
-  view: GrazrWindowView,
-  now: Date
-): { remaining: number; resets_at: string | null } | null {
-  const entry = snapshot?.find((e) => e.group === view && e.scope === null && isLive(e, now))
-  if (entry === undefined || entry.remaining === null) {
-    return null
-  }
-  return { remaining: entry.remaining, resets_at: entry.resets_at }
-}
-
-function thresholdOf(thresholds: Thresholds, group: string): number | null {
-  if (group === 'session') {
-    return thresholds.session
-  }
-  if (group === 'weekly') {
-    return thresholds.weekly
-  }
-  return null
 }
 
 // The engine's shortfall: the first live entry whose group has a threshold and that sits below it.
@@ -175,25 +173,6 @@ export function nextAccount(report: GrazrStatusReport, now: Date): GrazrStatusAc
   return null
 }
 
-// The engine's reset time, shown in the given zone so tests can pin it.
-function formatReset(iso: string | null, timeZone: string | undefined): string | null {
-  if (iso === null) {
-    return null
-  }
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) {
-    return null
-  }
-  // h23 rather than hour12:false, which some engines render as 24:00 at midnight.
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    timeZone
-  }).format(date)
-}
-
 export function rowState(
   account: GrazrAccountEntry,
   report: GrazrStatusReport,
@@ -244,10 +223,25 @@ export function centre(
   const next = nextAccount(report, now)
   const nextName = next?.name ?? null
   if (active === null) {
-    return { name: '—', percentText: '—', hint: 'no active login', next: nextName, tone: 'none' }
+    return {
+      name: '—',
+      percentText: '—',
+      modelLines: [],
+      hint: 'no active login',
+      next: nextName,
+      tone: 'none'
+    }
   }
   const live = windowOf(active.snapshot, view, now)
   const percentText = live ? `${Math.round(live.remaining)}% left` : '—'
+  // Per-model limits are weekly, so the 5h view names none.
+  const modelLines =
+    view === 'weekly'
+      ? modelScopes(report).flatMap((scope) => {
+          const left = modelWindowLeft(active.snapshot, scope, now)
+          return left === null ? [] : [`${scope} ${left}% left`]
+        })
+      : []
   const reason = blockedReason(active)
   let hint = 'fine'
   let tone: GrazrCentreTone = 'fine'
@@ -263,7 +257,7 @@ export function centre(
     hint = 'not read yet'
     tone = 'none'
   }
-  return { name: active.name, percentText, hint, next: nextName, tone }
+  return { name: active.name, percentText, modelLines, hint, next: nextName, tone }
 }
 
 const SEGMENT_STATE: Record<GrazrRowStatus, GrazrSegmentState> = {
@@ -284,25 +278,39 @@ export function buildGrazrRotationView(
 ): GrazrRotationView {
   const rows: GrazrRotationRow[] = []
   const segments: GrazrRingSegment[] = []
+  const scopes = view === 'weekly' ? modelScopes(report) : []
   orderedAccounts(report).forEach((account, i) => {
     const state = rowState(account, report, view, { timeZone, now })
     const index = i + 1
+    const record = isMissing(account) ? null : account
     rows.push({
       index,
       name: account.name,
-      email: isMissing(account) ? null : account.email,
+      email: record?.email ?? null,
+      organization: record?.organization ?? null,
+      plan: record?.plan ? grazrPlanLabel(record.plan) : null,
+      readingFrom: record?.updated != null ? relativeAge(record.updated, now) : null,
+      windows: record ? windowBars(record.snapshot, report.settings.thresholds, now, timeZone) : [],
       percent: state.percent,
       status: state.status,
       label: state.label,
-      blocked: isMissing(account) ? null : blockedReason(account),
+      blocked: record ? blockedReason(record) : null,
       isActive: state.status === 'active',
       isNext: state.status === 'next'
     })
-    const remaining =
-      isMissing(account) || state.status === 'blocked'
-        ? null
-        : (windowOf(account.snapshot, view, now)?.remaining ?? null)
-    segments.push({ index, name: account.name, remaining, state: SEGMENT_STATE[state.status] })
+    // A blocked account cannot be rotated to, so its rings show nothing whatever its snapshot says.
+    const readable = record !== null && state.status !== 'blocked'
+    const remaining = readable ? (windowOf(record.snapshot, view, now)?.remaining ?? null) : null
+    const models = Object.fromEntries(
+      scopes.map((scope) => [scope, readable ? modelWindowLeft(record.snapshot, scope, now) : null])
+    )
+    segments.push({
+      index,
+      name: account.name,
+      remaining,
+      models,
+      state: SEGMENT_STATE[state.status]
+    })
   })
-  return { centre: centre(report, view, { now }), rows, segments }
+  return { centre: centre(report, view, { now }), rows, segments, modelScopes: scopes }
 }
