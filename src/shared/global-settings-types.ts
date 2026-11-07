@@ -394,6 +394,9 @@ export type GlobalSettings = GlobalSettingsBase & {
   agentYoloDefaultsMigrated?: boolean
   /** Why: disabling must persist so startup doesn't reinstall global agent hook entries the user just removed. */
   agentStatusHooksEnabled: boolean
+  /** Claude Accounts: answer Claude's usage-credits dialog with the switch to the fallback model,
+   *  so agents keep working when the Fable allowance runs out. Absent reads as off. */
+  grazrAutoModelSwitch?: boolean
   /** Local agent-state-rules.json replaces downloaded/bundled rules for testing. */
   agentStateRulesPath?: string | null
   /** Off ignores downloads/cache and uses bundled rules or local override; absent means on. */

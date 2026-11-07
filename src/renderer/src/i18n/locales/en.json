@@ -66,6 +66,124 @@
       "pasteTooManyCells": "Select fewer cells to paste at once."
     }
   },
+  "grazr": {
+    "dialog": {
+      "accountActions": "Account actions",
+      "addAccount": "Add Account…",
+      "asOf": "as of {{time}}",
+      "autoModelSwitch": "When Fable runs out, switch model and continue",
+      "autoModelSwitchHint": "Agents keep working on the fallback model. Never spends credits.",
+      "chip": {
+        "engineError": "engine error",
+        "foreign": "another grazr owns the status line",
+        "managed": "managed profile",
+        "noSshAccess": "no SSH access",
+        "notConnected": "not connected",
+        "notDeployed": "engine not deployed",
+        "off": "rotation off",
+        "on": "rotation on",
+        "unreachable": "unreachable",
+        "unsupportedPlatform": "unsupported platform"
+      },
+      "connect": "Connect to Claude's status line",
+      "deployEngine": "Deploy engine",
+      "disconnect": "Disconnect from Claude's status line",
+      "done": "Done",
+      "engineOutdated": "Engine {{installed}} · update to {{bundled}} available",
+      "finishLogin": "Finish the login in the terminal, then reopen Claude Accounts",
+      "loading": "Reading the status…",
+      "loginTabLabel": "Claude Accounts",
+      "nextMarker": "next ▸",
+      "noNextAccount": "none",
+      "noSshAccess": "Connect this host over SSH first.",
+      "notDeployed": "The Claude Accounts engine is not on this host yet. Deploy it to start rotating accounts.",
+      "noticeTitle": "grazr · {{label}}",
+      "openWorkspaceFirst": "Open a workspace on this server first",
+      "readingFrom": "Reading from {{when}}",
+      "reauthenticate": "Re-authenticate…",
+      "refresh": "Refresh",
+      "retry": "Retry",
+      "ringLabel": "Rotation order around the clock",
+      "ringLegend": "Outer ring: all models · inner: {{models}}",
+      "rotateAutomatically": "Rotate automatically",
+      "subtitle": "{{label}} · swaps below {{session}}% 5h · {{weekly}}% week",
+      "swapNext": "Swap to Next Account",
+      "swapToThis": "Swap to this account",
+      "sync": {
+        "apply": "Apply",
+        "devices": "Devices in the sync",
+        "hint": "Last change wins. Pins and thresholds stay per device.",
+        "onlyOne": "Only {{name}} is in the sync, nothing to sync yet",
+        "reauthenticate": "Re-authenticate…",
+        "title": "Keep accounts in sync across devices"
+      },
+      "takeOver": "Take over the status line",
+      "terminalFailed": "Could not open a terminal for the login.",
+      "title": "Claude Accounts",
+      "unsupportedPlatform": "Claude Accounts is not available on this platform.",
+      "updateEngine": "Update engine…",
+      "window": {
+        "session": "5h",
+        "weekly": "Week"
+      },
+      "windowLabel": "Usage window"
+    },
+    "main": {
+      "deployedHost": "Deployed the engine to the host.",
+      "deployedLocal": "Deployed the engine to this computer.",
+      "deployTimedOut": "Deploying the engine timed out.",
+      "engineVersionUnreadable": "Could not read the bundled engine version at {{path}}: {{detail}}",
+      "homeUnresolved": "Could not resolve the remote home directory.",
+      "noSshAccess": "Connect this host over SSH first.",
+      "noStatusReport": "The engine printed no status report.",
+      "notInstalled": "Grazr is not installed on this host yet.",
+      "pythonMissing": "python3 is not available: {{detail}}",
+      "thisComputer": "This computer",
+      "timedOut": "The engine timed out.",
+      "unreachable": "Could not reach the host: {{detail}}",
+      "unsupportedPlatform": "Grazr is not available on this platform."
+    },
+    "menu": {
+      "accounts": "Accounts…",
+      "claudeAccountsRotation": "Claude Accounts (rotation)…",
+      "connect": "Connect to Claude's status line",
+      "disconnect": "Disconnect from Claude's status line",
+      "grazr": "grazr",
+      "loading": "Loading…",
+      "nextAccount": "{{name}} · NEXT ▸",
+      "noOtherAccounts": "No other accounts",
+      "reauthenticate": "Re-authenticate {{email}}…",
+      "swapNext": "Swap to the next account now",
+      "switchShared": "Switch Shared Account",
+      "unavailable": "Not available for this host"
+    },
+    "modelSwitch": {
+      "body": "Its Fable allowance ran out and usage credits are off, so it continues on {{model}}.",
+      "title": "grazr: {{name}} switched to {{model}}"
+    },
+    "sync": {
+      "allInSync": "All devices in sync",
+      "blocked": "{{who}}: {{account}} is blocked ({{reason}}), still on {{active}}",
+      "didNotMove": "did not move",
+      "follow": "{{followers}} follow {{from}}",
+      "followChanged": "{{followers}} follow {{from}} (changed {{changed}})",
+      "following": "following {{source}}",
+      "follows": "{{followers}} follows {{from}}",
+      "followsChanged": "{{followers}} follows {{from}} (changed {{changed}})",
+      "needsUpdate": "grazr on {{who}} needs {{version}} or later",
+      "noAccount": "no account",
+      "notEnrolled": "{{who}}: {{account}} is not enrolled",
+      "nowOn": "grazr: {{device}} now on {{account}}",
+      "paused": "Sync paused: {{a}} and {{b}} keep undoing each other. Check that their thresholds match.",
+      "refused": "{{who}}: {{words}}",
+      "willMove": "{{who}} will move to {{account}} and take {{from}}'s order",
+      "willTakeOrder": "{{who}} will take {{from}}'s order"
+    },
+    "web": {
+      "desktopOnly": "Grazr runs in the desktop app on the computer that owns the host.",
+      "hostLabel": "This host"
+    }
+  },
   "osDocumentOpen": {
     "failed": "Failed to open the file."
   },

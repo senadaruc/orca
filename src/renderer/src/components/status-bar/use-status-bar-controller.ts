@@ -5,6 +5,7 @@ import { selectFloatingWorkspaceHasUnread } from '../../store/selectors'
 import type { ProviderRateLimits } from '../../../../shared/rate-limit-types'
 import { normalizeUsagePercentageDisplay } from '../../../../shared/usage-percentage-display'
 import { normalizeStatusBarUsageMode } from '../../../../shared/status-bar-usage-mode'
+import { openGrazrAccountsForUsageOwner } from '../grazr/open-grazr-accounts'
 import { isStatusBarItemAvailable } from './status-bar-agent-gating'
 import { getVisibleUsageProvider, isUsageEmptyState } from './status-bar-provider-visibility'
 import {
@@ -244,6 +245,10 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
     openSettingsTarget({ pane: 'stats', repoId: null })
     openSettingsPage()
   }
+  const handleOpenGrazr = (): void => {
+    setUsageMenuOpen(false)
+    openGrazrAccountsForUsageOwner(remoteOwner)
+  }
   const handleOpenProviderAccounts = (provider: ProviderRateLimits['provider']): void => {
     const sectionId = getUsageProviderAccountsSectionId(provider)
     // Why: a placeholder for a CLI-owned provider still leads to the host's accounts.
@@ -282,6 +287,7 @@ export function useStatusBarController(floatingTerminalOpen: boolean) {
     floatingTerminalActionLabel,
     floatingTerminalShortcut,
     handleManageAccounts,
+    handleOpenGrazr,
     handleOpenProviderAccounts,
     handleRefresh,
     handleUsageDetails,

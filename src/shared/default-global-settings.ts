@@ -254,6 +254,7 @@ export function buildDefaultSettings(args: {
     agentPermissionOverrides: {},
     agentStatusHooksEnabled: true,
     claudeSubagentNavigationEnabled: true,
+    grazrAutoModelSwitch: false,
     agentWorkspaceTrustEnabled: true,
     codexTerminalServerIsolation: true,
     codexSharedServerWarning: true,

@@ -12,7 +12,7 @@ import { fingerprintRuntimeSshTarget } from '../ssh/runtime-ssh-target-fingerpri
 
 export type ListRuntimeEnvironments = () => readonly Pick<
   KnownRuntimeEnvironment,
-  'id' | 'orcadDeployment' | 'sshAccess'
+  'id' | 'name' | 'orcadDeployment' | 'sshAccess'
 >[]
 
 export const listAppRuntimeEnvironments: ListRuntimeEnvironments = () =>

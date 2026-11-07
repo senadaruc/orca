@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- Why: the menu's item list is one surface; the grazr submenu adds its mount point here. */
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +38,7 @@ import { useOptionalShortcutLabel } from '@/hooks/useShortcutLabel'
 import type { WorktreeContextMenuModel } from './use-worktree-context-menu-model'
 import { WorktreeStatusMenuItems } from '../../workspace-status/presentation/WorktreeStatusMenuItems'
 import { WorktreeWslHostStartMenuItem } from '../../workspace-card/host/WorktreeWslHostStartMenuItem'
+import { GrazrWorktreeMenuItems } from '../../GrazrWorktreeMenuItems'
 import { WorktreeContextMenuOverlays } from './WorktreeContextMenuOverlays'
 import {
   WORKTREE_CONTEXT_MENU_SCOPE_ATTR,
@@ -194,6 +196,7 @@ export default function WorktreeContextMenuView({ model }: { model: WorktreeCont
                 )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <GrazrWorktreeMenuItems worktreeId={worktree.id} disabled={isDeleting} />
               <DropdownMenuItem onSelect={handleTogglePin} disabled={isDeleting}>
                 {worktree.isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
                 {worktree.isPinned

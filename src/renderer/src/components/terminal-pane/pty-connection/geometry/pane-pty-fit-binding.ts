@@ -2,6 +2,7 @@ import { isRemoteRuntimePtyId } from '../../../../../../shared/remote-runtime/re
 import { safeFit } from '@/lib/pane-manager/pane-fit'
 import { bindPanePtyId, getFitOverrideForPty } from '@/lib/pane-manager/mobile-fit-overrides'
 import { isPtyLocked } from '@/lib/pane-manager/mobile-driver-state'
+import { registerPtyScreenReader, unregisterPtyScreenReader } from '../../pty-screen-readers'
 import type { ConnectPanePtySession } from '../connect-pane-pty-session'
 
 export function bindPanePtyFit(session: ConnectPanePtySession): void {
@@ -9,6 +10,11 @@ export function bindPanePtyFit(session: ConnectPanePtySession): void {
   session.pendingVisibleRemoteViewportClaim = false
   session.setPanePtyFitBinding = (ptyId: string): void => {
     bindPanePtyId(session.pane.id, ptyId, session.deps.tabId)
+    registerPtyScreenReader(ptyId, {
+      tabId: session.deps.tabId,
+      leafId: session.pane.leafId,
+      terminal: session.pane.terminal
+    })
     session.pane.container.dataset.ptyId = ptyId
     if (
       session.deps.isVisibleRef.current &&
@@ -42,6 +48,10 @@ export function bindPanePtyFitRelease(session: ConnectPanePtySession): void {
   session.clearPanePtyFitBinding = (): void => {
     // Clear module-level fit bindings explicitly; DOM removal cannot release them.
     bindPanePtyId(session.pane.id, null, session.deps.tabId)
+    const boundPtyId = session.pane.container.dataset.ptyId
+    if (boundPtyId !== undefined) {
+      unregisterPtyScreenReader(boundPtyId)
+    }
     session.visibleRemoteViewportClaimPtyId = null
     session.pendingVisibleRemoteViewportClaim = false
     session.activePanePtyBinding = null

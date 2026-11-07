@@ -8,6 +8,7 @@ import type {
   ZcodePlanCredentialsApi
 } from './api/agent-account-api'
 import type { HooksApi } from './api/agent-hook-api'
+import type { GrazrApi, GrazrSyncApi } from '../shared/grazr-api-types'
 import type { SkillsApi } from './api/agent-skill-api'
 import type { AgentAwakeApi, AgentStatusApi } from './api/agent-status-api'
 import type {
@@ -113,6 +114,7 @@ export type PreloadApi = {
   keybindings: KeybindingsApi
   codexAccounts: CodexAccountsApi
   claudeAccounts: ClaudeAccountsApi
+  grazr: GrazrApi & GrazrSyncApi
   cli: CliApi
   codexConfigSync: CodexConfigSyncApi
   preflight: PreflightApi

@@ -81,6 +81,7 @@ export function StatusBarSurface({
     floatingTerminalActionLabel,
     floatingTerminalShortcut,
     handleManageAccounts,
+    handleOpenGrazr,
     handleOpenProviderAccounts,
     handleRefresh,
     handleUsageDetails,
@@ -214,6 +215,7 @@ export function StatusBarSurface({
                     onOpenProvider={handleOpenProviderAccounts}
                     onSignIn={handleOpenProviderAccounts}
                     canSignIn={canSignInFromUsageRow}
+                    onOpenGrazr={handleOpenGrazr}
                     onManageAccounts={handleManageAccounts}
                     onUsageDetails={handleUsageDetails}
                     renderRow={(p, rowNode) => {
