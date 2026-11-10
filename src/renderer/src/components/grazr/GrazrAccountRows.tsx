@@ -104,8 +104,8 @@ export function GrazrAccountRows({
                       {translate('grazr.dialog.reauthenticate', 'Re-authenticate…')}
                     </DropdownMenuItem>
                   )}
-                  {/* Why: Claude Code uses a reset for the login it runs on, and may not have noted this account yet. */}
-                  {row.isActive && row.unusedReset !== false && (
+                  {/* Why: Claude Code uses a reset for the login it runs on. */}
+                  {row.isActive && row.unusedReset === true && (
                     <>
                       <DropdownMenuItem
                         disabled={!terminalAvailable || actionsDisabled}
