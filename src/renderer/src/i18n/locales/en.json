@@ -113,6 +113,8 @@
       "subtitle": "{{label}} · swaps below {{session}}% 5h · {{weekly}}% week",
       "swapNext": "Swap to Next Account",
       "swapToThis": "Swap to this account",
+      "swapUseFullReset": "Swap and use full reset…",
+      "swapUseModelReset": "Swap and use model reset…",
       "sync": {
         "apply": "Apply",
         "devices": "Devices in the sync",

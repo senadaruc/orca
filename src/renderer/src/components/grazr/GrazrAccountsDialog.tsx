@@ -33,7 +33,8 @@ import { GrazrAccountRows } from './GrazrAccountRows'
 import { GrazrClockRing } from './GrazrClockRing'
 import { grazrChipCopy } from './grazr-chip-copy'
 import { openGrazrEnrolTerminal } from './grazr-enrol-terminal'
-import { grazrLimitResetCommand, type GrazrLimitResetKind } from './grazr-limit-reset-command'
+import type { GrazrLimitResetKind } from './grazr-limit-reset-command'
+import { openGrazrLimitResetTerminal } from './grazr-limit-reset-terminal'
 import { GrazrOutcomeBody } from './GrazrOutcomeBody'
 import { GrazrRotationControls } from './GrazrRotationControls'
 import { GrazrSyncSection } from './GrazrSyncSection'
@@ -176,24 +177,20 @@ function GrazrAccountsBody({
     }
   }
 
-  // Why: the reset list is Anthropic's to show and spend, so the dialog hands over to Claude Code's own command.
-  function openResetTerminal(kind: GrazrLimitResetKind): void {
+  // Why: Claude Code uses a reset for the login it runs on, so a parked account is swapped to first.
+  async function openResetTerminal(
+    kind: GrazrLimitResetKind,
+    swapTo: string | null
+  ): Promise<void> {
     if (worktreeId === null) {
       return
     }
-    const opened = openGrazrEnrolTerminal({
-      worktreeId,
-      command: grazrLimitResetCommand(kind),
-      label: translate('grazr.dialog.resetTabLabel', 'Limit reset')
-    })
-    if (opened === null) {
-      toast.error(
-        translate('grazr.dialog.resetTerminalFailed', 'Could not open a terminal for the reset.')
-      )
+    if (swapTo !== null && !(await run(() => window.api.grazr.swap(host, swapTo)))?.ok) {
       return
     }
-    toast.message(translate('grazr.dialog.finishReset', 'Confirm the reset in the Claude terminal'))
-    onClose()
+    if (openGrazrLimitResetTerminal(worktreeId, kind)) {
+      onClose()
+    }
   }
 
   async function connect(): Promise<void> {
@@ -321,7 +318,7 @@ function GrazrAccountsBody({
             terminalAvailable={terminalAvailable}
             onSwap={(name) => void run(() => window.api.grazr.swap(host, name))}
             onReauthenticate={() => void startLogin()}
-            onUseReset={openResetTerminal}
+            onUseReset={(kind, swapTo) => void openResetTerminal(kind, swapTo)}
           />
           <GrazrRotationControls
             rotating={report.settings.enabled}

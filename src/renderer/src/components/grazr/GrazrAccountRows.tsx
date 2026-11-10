@@ -29,7 +29,8 @@ export function GrazrAccountRows({
   terminalAvailable: boolean
   onSwap: (name: string) => void
   onReauthenticate: (name: string) => void
-  onUseReset: (kind: GrazrLimitResetKind) => void
+  // swapTo names a parked account to swap to first; null means the active account.
+  onUseReset: (kind: GrazrLimitResetKind, swapTo: string | null) => void
 }): React.JSX.Element {
   return (
     <ul className="divide-y divide-border rounded-md border border-border">
@@ -108,15 +109,31 @@ export function GrazrAccountRows({
                     <>
                       <DropdownMenuItem
                         disabled={!terminalAvailable || actionsDisabled}
-                        onSelect={() => onUseReset('fable')}
+                        onSelect={() => onUseReset('fable', null)}
                       >
                         {translate('grazr.dialog.useModelReset', 'Use model reset…')}
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         disabled={!terminalAvailable || actionsDisabled}
-                        onSelect={() => onUseReset('full')}
+                        onSelect={() => onUseReset('full', null)}
                       >
                         {translate('grazr.dialog.useFullReset', 'Use full reset…')}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {canSwap && row.unusedReset === true && (
+                    <>
+                      <DropdownMenuItem
+                        disabled={!terminalAvailable || actionsDisabled}
+                        onSelect={() => onUseReset('fable', row.name)}
+                      >
+                        {translate('grazr.dialog.swapUseModelReset', 'Swap and use model reset…')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={!terminalAvailable || actionsDisabled}
+                        onSelect={() => onUseReset('full', row.name)}
+                      >
+                        {translate('grazr.dialog.swapUseFullReset', 'Swap and use full reset…')}
                       </DropdownMenuItem>
                     </>
                   )}
