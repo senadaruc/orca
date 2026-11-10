@@ -46,6 +46,7 @@ function member(
       organization: null,
       plan: null,
       updated: null,
+      unused_reset: null,
       parked: true,
       in_order: true,
       first_reading_due: false,

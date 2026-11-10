@@ -33,6 +33,7 @@ import { GrazrAccountRows } from './GrazrAccountRows'
 import { GrazrClockRing } from './GrazrClockRing'
 import { grazrChipCopy } from './grazr-chip-copy'
 import { openGrazrEnrolTerminal } from './grazr-enrol-terminal'
+import { grazrLimitResetCommand, type GrazrLimitResetKind } from './grazr-limit-reset-command'
 import { GrazrOutcomeBody } from './GrazrOutcomeBody'
 import { GrazrRotationControls } from './GrazrRotationControls'
 import { GrazrSyncSection } from './GrazrSyncSection'
@@ -175,6 +176,26 @@ function GrazrAccountsBody({
     }
   }
 
+  // Why: the reset list is Anthropic's to show and spend, so the dialog hands over to Claude Code's own command.
+  function openResetTerminal(kind: GrazrLimitResetKind): void {
+    if (worktreeId === null) {
+      return
+    }
+    const opened = openGrazrEnrolTerminal({
+      worktreeId,
+      command: grazrLimitResetCommand(kind),
+      label: translate('grazr.dialog.resetTabLabel', 'Limit reset')
+    })
+    if (opened === null) {
+      toast.error(
+        translate('grazr.dialog.resetTerminalFailed', 'Could not open a terminal for the reset.')
+      )
+      return
+    }
+    toast.message(translate('grazr.dialog.finishReset', 'Confirm the reset in the Claude terminal'))
+    onClose()
+  }
+
   async function connect(): Promise<void> {
     const takeOver = foreignRefusal !== null
     const result = await run(() => window.api.grazr.install(host, takeOver))
@@ -300,6 +321,7 @@ function GrazrAccountsBody({
             terminalAvailable={terminalAvailable}
             onSwap={(name) => void run(() => window.api.grazr.swap(host, name))}
             onReauthenticate={() => void startLogin()}
+            onUseReset={openResetTerminal}
           />
           <GrazrRotationControls
             rotating={report.settings.enabled}

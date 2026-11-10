@@ -91,6 +91,7 @@
       "done": "Done",
       "engineOutdated": "Engine {{installed}} · update to {{bundled}} available",
       "finishLogin": "Finish the login in the terminal, then reopen Claude Accounts",
+      "finishReset": "Confirm the reset in the Claude terminal",
       "loading": "Reading the status…",
       "loginTabLabel": "Claude Accounts",
       "nextMarker": "next ▸",
@@ -102,6 +103,9 @@
       "readingFrom": "Reading from {{when}}",
       "reauthenticate": "Re-authenticate…",
       "refresh": "Refresh",
+      "resetAvailable": "Reset available",
+      "resetTabLabel": "Limit reset",
+      "resetTerminalFailed": "Could not open a terminal for the reset.",
       "retry": "Retry",
       "ringLabel": "Rotation order around the clock",
       "ringLegend": "Outer ring: all models · inner: {{models}}",
@@ -122,6 +126,8 @@
       "title": "Claude Accounts",
       "unsupportedPlatform": "Claude Accounts is not available on this platform.",
       "updateEngine": "Update engine…",
+      "useFullReset": "Use full reset…",
+      "useModelReset": "Use model reset…",
       "window": {
         "session": "5h",
         "weekly": "Week"

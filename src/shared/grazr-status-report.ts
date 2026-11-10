@@ -43,6 +43,8 @@ const AccountSchema = z.object({
   in_order: z.boolean().catch(false),
   first_reading_due: z.boolean().catch(false),
   blocked: z.string().nullable().catch(null),
+  // Claude Code's own note of an unused limit reset; null when it made none, or the note has lapsed.
+  unused_reset: z.object({ holds: z.boolean() }).nullable().catch(null),
   snapshot: z
     .unknown()
     .optional()

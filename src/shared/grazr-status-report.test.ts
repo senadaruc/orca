@@ -23,6 +23,31 @@ describe('parseGrazrStatusReport', () => {
     })
   })
 
+  it("reads Claude Code's unused-reset note per account, null when the engine sends none", () => {
+    const report = parseGrazrStatusReport(
+      JSON.stringify({
+        accounts: [
+          {
+            id: 'a',
+            name: 'a',
+            unused_reset: { holds: true, checked_at: 1700000000, valid_until: 1700259200 }
+          },
+          { id: 'b', name: 'b', unused_reset: { holds: false } },
+          { id: 'c', name: 'c', unused_reset: null },
+          { id: 'd', name: 'd' },
+          { id: 'e', name: 'e', unused_reset: { holds: 'yes' } }
+        ]
+      })
+    )
+    expect(report?.accounts.map((account) => account.unused_reset)).toEqual([
+      { holds: true },
+      { holds: false },
+      null,
+      null,
+      null
+    ])
+  })
+
   it('reads each account plan, organization and reading time, absent on an older engine', () => {
     const report = parseGrazrStatusReport(
       JSON.stringify({

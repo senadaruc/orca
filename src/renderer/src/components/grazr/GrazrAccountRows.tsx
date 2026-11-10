@@ -10,6 +10,7 @@ import {
 import { translate } from '@/i18n/i18n'
 import { cn } from '@/lib/utils'
 import type { GrazrRotationRow } from '../../../../shared/grazr-rotation-view'
+import type { GrazrLimitResetKind } from './grazr-limit-reset-command'
 import { ACCOUNT_OK_CLASS, ROW_DOT_CLASS, ROW_LABEL_CLASS } from './grazr-ring-colors'
 import { GrazrWindowBars } from './GrazrWindowBars'
 
@@ -19,7 +20,8 @@ export function GrazrAccountRows({
   actionsDisabled,
   terminalAvailable,
   onSwap,
-  onReauthenticate
+  onReauthenticate,
+  onUseReset
 }: {
   rows: GrazrRotationRow[]
   parkedNames: ReadonlySet<string>
@@ -27,6 +29,7 @@ export function GrazrAccountRows({
   terminalAvailable: boolean
   onSwap: (name: string) => void
   onReauthenticate: (name: string) => void
+  onUseReset: (kind: GrazrLimitResetKind) => void
 }): React.JSX.Element {
   return (
     <ul className="divide-y divide-border rounded-md border border-border">
@@ -48,6 +51,11 @@ export function GrazrAccountRows({
                     {row.name}
                   </span>
                   {row.plan && <Badge variant="outline">{row.plan}</Badge>}
+                  {row.unusedReset === true && (
+                    <Badge variant="secondary">
+                      {translate('grazr.dialog.resetAvailable', 'Reset available')}
+                    </Badge>
+                  )}
                 </div>
                 {row.email && (
                   <div className="truncate text-xs text-muted-foreground">{row.email}</div>
@@ -94,6 +102,23 @@ export function GrazrAccountRows({
                     >
                       {translate('grazr.dialog.reauthenticate', 'Re-authenticate…')}
                     </DropdownMenuItem>
+                  )}
+                  {/* Why: Claude Code uses a reset for the login it runs on, and may not have noted this account yet. */}
+                  {row.isActive && row.unusedReset !== false && (
+                    <>
+                      <DropdownMenuItem
+                        disabled={!terminalAvailable || actionsDisabled}
+                        onSelect={() => onUseReset('fable')}
+                      >
+                        {translate('grazr.dialog.useModelReset', 'Use model reset…')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={!terminalAvailable || actionsDisabled}
+                        onSelect={() => onUseReset('full')}
+                      >
+                        {translate('grazr.dialog.useFullReset', 'Use full reset…')}
+                      </DropdownMenuItem>
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

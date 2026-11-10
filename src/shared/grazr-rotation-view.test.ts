@@ -624,6 +624,7 @@ describe('buildGrazrRotationView', () => {
       organization: null,
       plan: null,
       updated: null,
+      unused_reset: null,
       parked: true,
       in_order: true,
       blocked: null,

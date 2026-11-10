@@ -70,6 +70,9 @@ export type GrazrRotationRow = {
   status: GrazrRowStatus
   label: string
   blocked: string | null
+  // Whether Claude Code last saw an unused limit reset on this account, null when it has not said.
+  // Its note covers one account at a time and never says which kind of reset or how many.
+  unusedReset: boolean | null
   isActive: boolean
   isNext: boolean
 }
@@ -295,6 +298,7 @@ export function buildGrazrRotationView(
       status: state.status,
       label: state.label,
       blocked: record ? blockedReason(record) : null,
+      unusedReset: record?.unused_reset?.holds ?? null,
       isActive: state.status === 'active',
       isNext: state.status === 'next'
     })

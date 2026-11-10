@@ -39,7 +39,7 @@ Config = namedtuple(
 Runtime = namedtuple("Runtime", "paths store state_dir config")
 
 # Reported by `status --json`.
-VERSION = "0.4.7+fork.13"
+VERSION = "0.4.7+fork.15"
 
 DEFAULT_CONFIG = """\
 # Rotate when a limit group has less than this percent left.
@@ -108,6 +108,10 @@ MODEL_RECENT_SECONDS = 15 * 60
 # still reads as spent until its reset.
 PARKED_STATE = "parked.json"        # {"at": unix time of the last poll}
 PARKED_LOCK = "parked.lock"
+# Whether each account holds an unused limit reset, as Claude Code last noted
+# it. Claude keeps one note, for the account it last asked about; the server
+# gives the list of resets to Claude's own clients only, so this is all there is.
+UNUSED_RESETS = "unused_resets.json"  # {account id: {holds, checked_at, valid_until}}
 
 TAG = "grazr"
 ESCAPE = "\x1b"
@@ -1895,8 +1899,10 @@ def status_report(runtime, now=None):
     statusline = claude.statusline_installed(paths.config_dir, _record_path(state_dir), state_dir)
     failure_hook = claude.failure_hook_installed(paths.config_dir, _failure_command(state_dir))
     last = _last_rotation(state_dir)
-    live_oauth = _live_oauth(paths)
+    live = _live_config(paths)
+    live_oauth = _oauth_of(live)
     plans = {entry.id: _account_plan(paths, entry.id, active, live_oauth) for entry in everyone}
+    unused_resets = _unused_resets(state_dir, live, active, now)
     return {
         "installed": statusline and failure_hook,
         "connection": {
@@ -1927,6 +1933,7 @@ def status_report(runtime, now=None):
                 "in_order": entry.id in ordered_ids,
                 "first_reading_due": accounts.first_reading_due(paths, entry.id),
                 "updated": accounts.updated_at(paths, entry.id),
+                "unused_reset": unused_resets.get(entry.id),
             }
             for entry in everyone
         ],
@@ -1973,15 +1980,76 @@ def _organization_of(paths, identifier):
     return organization if isinstance(organization, str) else None
 
 
-def _live_oauth(paths):
-    """The live `oauthAccount` in Claude's config file, None when the file is
-    missing, unreadable or lacks it. Read once per report."""
+def _live_config(paths):
+    """Claude's config file as a dict, None when it is missing or unreadable.
+    Read once per report."""
     try:
         with open(paths.config_path) as handle:
-            oauth = json.load(handle).get("oauthAccount")
-    except (OSError, ValueError, AttributeError):
+            config = json.load(handle)
+    except (OSError, ValueError):
         return None
+    return config if isinstance(config, dict) else None
+
+
+def _oauth_of(config):
+    oauth = config.get("oauthAccount") if config else None
     return oauth if isinstance(oauth, dict) else None
+
+
+def _live_oauth(paths):
+    """The live `oauthAccount` in Claude's config file, None when the file is
+    missing, unreadable or lacks it."""
+    return _oauth_of(_live_config(paths))
+
+
+def _noted_unused_reset(config):
+    """(account id, note) from Claude Code's `unusedLimitResetStatusCache`, or
+    None when Claude holds no readable note. Its times are in milliseconds."""
+    note = config.get("unusedLimitResetStatusCache") if config else None
+    try:
+        identifier, holds = note["accountUuid"], note["holdsUnusedReset"]
+        checked_at, valid_until = note["checkedAt"] / 1000, note["validUntil"] / 1000
+    except (TypeError, KeyError):
+        return None
+    if not isinstance(identifier, str) or not identifier or not isinstance(holds, bool):
+        return None
+    return identifier, {"holds": holds, "checked_at": checked_at, "valid_until": valid_until}
+
+
+def _unused_resets(state_dir, config, active, now):
+    """{account id: {holds, checked_at, valid_until}} for every account whose
+    note is still current. Claude's one note is kept per account here, so an
+    account parked since is still known. Claude drops its note when a reset is
+    used, and with it goes what was kept for the active account: that is the
+    account the reset was used on. A config or a note that cannot be read
+    changes nothing."""
+    path = os.path.join(state_dir, UNUSED_RESETS)
+    try:
+        with open(path) as handle:
+            kept = json.load(handle)
+    except (OSError, ValueError):
+        kept = {}
+    if not isinstance(kept, dict):
+        kept = {}
+    known = dict(kept)
+    noted = _noted_unused_reset(config)
+    if noted is not None:
+        known[noted[0]] = noted[1]
+    elif config is not None and "unusedLimitResetStatusCache" not in config:
+        known.pop(active, None)
+    if known != kept:
+        try:
+            atomic.write(path, json.dumps(known))
+        except OSError:
+            pass
+    current = {}
+    for identifier, note in known.items():
+        try:
+            if note["checked_at"] <= now.timestamp() < note["valid_until"] and isinstance(note["holds"], bool):
+                current[identifier] = note
+        except (TypeError, KeyError):
+            continue
+    return current
 
 
 def _account_plan(paths, identifier, active_id, live_oauth):
@@ -2177,6 +2245,7 @@ def _enrol_from(runtime, source):
     if not name:
         print("A name is required")
         return 1
+    known = _enrolled_ids(paths)
     try:
         identifier = _enrol_between_rotations(runtime, name, source)
     except RuntimeError as error:
@@ -2185,7 +2254,10 @@ def _enrol_from(runtime, source):
     print("\nEnrolled %s as %s" % (name, identifier))
     if _unblock(state_dir, identifier, datetime.now(timezone.utc)):
         print("It had failed before, and is back in rotation")
-    print('Add it to ACCOUNTS in %s' % _config_path())
+    if identifier not in known and _join_order(name):
+        print("Added it to the end of ACCOUNTS in %s" % _config_path())
+    else:
+        print('Add it to ACCOUNTS in %s' % _config_path())
     # Checked before either slot is written, so a split between two grazrs never happens.
     shim = _shim_command(state_dir)
     hook = _failure_command(state_dir)
@@ -2206,6 +2278,31 @@ def _enrol_from(runtime, source):
         # Enrolling worked. Settings that cannot be read are reported, not raised.
         print("grazr: %s" % error)
     return 0
+
+
+def _enrolled_ids(paths):
+    try:
+        return {entry.id for entry in accounts.load(paths, [])}
+    except OSError:
+        return set()
+
+
+def _join_order(name, path=None):
+    """Put a newly enrolled account at the end of ACCOUNTS. An empty ACCOUNTS
+    already means every account, and a config that is absent or unreadable is
+    left alone: the enrol has happened and must not fail on this."""
+    path = path or _config_path()
+    try:
+        if not os.path.exists(path):
+            return False
+        order = load_config(path).accounts
+        # A name `set ACCOUNTS` could not write back is left for the user to list.
+        if not order or name in order or name != "".join(name.split()) or '"' in name or "\\" in name:
+            return False
+        _write_setting(path, "ACCOUNTS", '"%s"' % " ".join(order + [name]))
+        return True
+    except (OSError, ValueError):
+        return False
 
 
 def _enrol_between_rotations(runtime, name, source):
@@ -2293,6 +2390,7 @@ def enrol_noninteractive(from_dir=None, stdin=False, name=None, expect_email=Non
     paths, store, state_dir, _ = runtime
     if from_dir:
         from_dir = os.path.abspath(from_dir)
+    known = _enrolled_ids(paths)
     try:
         if stdin:
             identity, blob = _read_import(sys.stdin.read())
@@ -2315,12 +2413,20 @@ def enrol_noninteractive(from_dir=None, stdin=False, name=None, expect_email=Non
         unblocked = _unblock(state_dir, identifier, datetime.now(timezone.utc))
     except Exception:
         unblocked = False
+    try:
+        ordered = identifier not in known and _join_order(name)
+    except Exception:
+        ordered = False
     if as_json:
-        print(json.dumps({"ok": True, "id": identifier, "name": name, "email": email, "unblocked": unblocked}))
+        print(json.dumps({
+            "ok": True, "id": identifier, "name": name, "email": email, "unblocked": unblocked, "ordered": ordered,
+        }))
     else:
         print("Enrolled %s as %s" % (name, identifier))
         if unblocked:
             print("It had failed before, and is back in rotation")
+        if ordered:
+            print("Added it to the end of ACCOUNTS in %s" % _config_path())
     return 0
 
 
@@ -2485,6 +2591,12 @@ def set_setting(key, value, path=None, enrolled=None):
         written = value
     path = path or _config_path()
     load_config(path)
+    _write_setting(path, key, written)
+    print("%s=%s" % (key, value))
+    return 0
+
+
+def _write_setting(path, key, written):
     with open(path) as handle:
         lines = handle.read().splitlines(True)
     replaced = False
@@ -2498,8 +2610,6 @@ def set_setting(key, value, path=None, enrolled=None):
             lines[-1] += "\n"
         lines.append("%s=%s\n" % (key, written))
     atomic.write(path, "".join(lines))
-    print("%s=%s" % (key, value))
-    return 0
 
 
 def _shim_dirs(state_dir):
