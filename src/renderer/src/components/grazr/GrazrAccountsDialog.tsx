@@ -89,7 +89,7 @@ function GrazrAccountsModal({
           }
         }}
       >
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="flex max-h-[calc(100vh-2rem)] flex-col overflow-hidden sm:max-w-2xl">
           <GrazrAccountsBody
             key={grazrHostKey(target.host)}
             host={target.host}
@@ -269,78 +269,81 @@ function GrazrAccountsBody({
         <DialogDescription>{subtitle}</DialogDescription>
       </DialogHeader>
 
-      {report && view ? (
-        <div className="space-y-4">
-          {engineOutdated && (
-            <div className="flex justify-center">
-              <Badge variant="outline">
-                {translate(
-                  'grazr.dialog.engineOutdated',
-                  'Engine {{installed}} · update to {{bundled}} available',
-                  {
-                    installed: report.version ?? '',
-                    bundled: status?.bundledEngineVersion ?? ''
-                  }
+      {/* Why: only the body scrolls, so the footer actions stay reachable on short screens. */}
+      <div className="scrollbar-sleek -mx-6 min-h-0 flex-1 overflow-y-auto px-6">
+        {report && view ? (
+          <div className="space-y-4">
+            {engineOutdated && (
+              <div className="flex justify-center">
+                <Badge variant="outline">
+                  {translate(
+                    'grazr.dialog.engineOutdated',
+                    'Engine {{installed}} · update to {{bundled}} available',
+                    {
+                      installed: report.version ?? '',
+                      bundled: status?.bundledEngineVersion ?? ''
+                    }
+                  )}
+                </Badge>
+              </div>
+            )}
+            {report.installed !== true && (
+              <div className="space-y-2">
+                <Button type="button" size="sm" disabled={busy} onClick={() => void connect()}>
+                  {connectLabel}
+                </Button>
+                {foreignRefusal !== null && (
+                  <p className="text-sm text-destructive">{foreignRefusal}</p>
                 )}
-              </Badge>
+              </div>
+            )}
+            <div className="flex justify-center">
+              <SettingsSegmentedControl<GrazrWindowView>
+                ariaLabel={translate('grazr.dialog.windowLabel', 'Usage window')}
+                value={windowView}
+                onChange={setWindowView}
+                options={[
+                  { value: 'weekly', label: translate('grazr.dialog.window.weekly', 'Week') },
+                  { value: 'session', label: translate('grazr.dialog.window.session', '5h') }
+                ]}
+              />
             </div>
-          )}
-          {report.installed !== true && (
-            <div className="space-y-2">
-              <Button type="button" size="sm" disabled={busy} onClick={() => void connect()}>
-                {connectLabel}
-              </Button>
-              {foreignRefusal !== null && (
-                <p className="text-sm text-destructive">{foreignRefusal}</p>
-              )}
-            </div>
-          )}
-          <div className="flex justify-center">
-            <SettingsSegmentedControl<GrazrWindowView>
-              ariaLabel={translate('grazr.dialog.windowLabel', 'Usage window')}
-              value={windowView}
-              onChange={setWindowView}
-              options={[
-                { value: 'weekly', label: translate('grazr.dialog.window.weekly', 'Week') },
-                { value: 'session', label: translate('grazr.dialog.window.session', '5h') }
-              ]}
+            <GrazrClockRing
+              segments={view.segments}
+              centre={view.centre}
+              modelScopes={view.modelScopes}
+            />
+            <GrazrAccountRows
+              rows={view.rows}
+              parkedNames={new Set(report.accounts.filter((a) => a.parked).map((a) => a.name))}
+              actionsDisabled={busy}
+              terminalAvailable={terminalAvailable}
+              onSwap={(name) => void run(() => window.api.grazr.swap(host, name))}
+              onReauthenticate={() => void startLogin()}
+              onUseReset={(kind, swapTo) => void openResetTerminal(kind, swapTo)}
+            />
+            <GrazrRotationControls
+              rotating={report.settings.enabled}
+              busy={busy}
+              onRotatingChange={(checked) =>
+                void run(() => window.api.grazr.setEnabled(host, checked))
+              }
+            />
+            <GrazrSyncSection
+              host={host}
+              onReauthenticate={terminalAvailable ? () => void startLogin() : null}
             />
           </div>
-          <GrazrClockRing
-            segments={view.segments}
-            centre={view.centre}
-            modelScopes={view.modelScopes}
-          />
-          <GrazrAccountRows
-            rows={view.rows}
-            parkedNames={new Set(report.accounts.filter((a) => a.parked).map((a) => a.name))}
-            actionsDisabled={busy}
-            terminalAvailable={terminalAvailable}
-            onSwap={(name) => void run(() => window.api.grazr.swap(host, name))}
-            onReauthenticate={() => void startLogin()}
-            onUseReset={(kind, swapTo) => void openResetTerminal(kind, swapTo)}
-          />
-          <GrazrRotationControls
-            rotating={report.settings.enabled}
+        ) : (
+          <GrazrOutcomeBody
+            outcome={outcome}
+            loading={loading}
             busy={busy}
-            onRotatingChange={(checked) =>
-              void run(() => window.api.grazr.setEnabled(host, checked))
-            }
+            onDeploy={() => void run(() => window.api.grazr.deploy(host))}
+            onRetry={() => void refresh()}
           />
-          <GrazrSyncSection
-            host={host}
-            onReauthenticate={terminalAvailable ? () => void startLogin() : null}
-          />
-        </div>
-      ) : (
-        <GrazrOutcomeBody
-          outcome={outcome}
-          loading={loading}
-          busy={busy}
-          onDeploy={() => void run(() => window.api.grazr.deploy(host))}
-          onRetry={() => void refresh()}
-        />
-      )}
+        )}
+      </div>
 
       <DialogFooter className="flex-col items-stretch sm:flex-col sm:justify-start">
         <div className="flex flex-wrap items-center justify-between gap-2">
