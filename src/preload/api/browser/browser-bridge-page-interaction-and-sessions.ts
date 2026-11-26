@@ -9,6 +9,12 @@ import {
   type BrowserAgentCursorEvent,
   type BrowserAgentViewportEvent
 } from '../../../shared/browser-agent-activity-contract'
+import {
+  BROWSER_PAGE_ACCENT_REPLY_CHANNEL,
+  BROWSER_PAGE_ACCENT_REQUEST_CHANNEL,
+  type BrowserPageAccentReply,
+  type BrowserPageAccentRequest
+} from '../../../shared/browser-page-accent'
 import type { PreloadApi } from '../../api-types'
 import type { BrowserUserAgentMode } from '../../../shared/browser-user-agent-mode'
 import type { ManagedBrowserProfileOwner } from '../../../shared/browser-profile-scope'
@@ -106,6 +112,15 @@ export const browserPageInteractionAndSessionsApi = {
   },
   agentCursorArrived: (sequence: number): void => {
     ipcRenderer.send(BROWSER_AGENT_CURSOR_ARRIVED_CHANNEL, { sequence })
+  },
+  onRequestPageAccent: (callback: (data: BrowserPageAccentRequest) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, data: BrowserPageAccentRequest) =>
+      callback(data)
+    ipcRenderer.on(BROWSER_PAGE_ACCENT_REQUEST_CHANNEL, listener)
+    return () => ipcRenderer.removeListener(BROWSER_PAGE_ACCENT_REQUEST_CHANNEL, listener)
+  },
+  replyPageAccent: (reply: BrowserPageAccentReply): void => {
+    ipcRenderer.send(BROWSER_PAGE_ACCENT_REPLY_CHANNEL, reply)
   },
   onPaneFocus: (
     callback: (data: { worktreeId: string | null; browserPageId: string }) => void

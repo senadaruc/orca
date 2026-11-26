@@ -10,6 +10,7 @@ import { RuntimeBrowserStorage } from './browser-storage'
 import { RuntimeBrowserTabQueries } from '../tabs/browser-tab-queries'
 import { RuntimeBrowserTabCreation } from '../tabs/browser-tab-creation'
 import { RuntimeBrowserTabClose } from '../tabs/browser-tab-close'
+import { RuntimeBrowserTabAccent } from '../tabs/browser-tab-accent'
 import { RuntimeBrowserProfiles } from './browser-profiles'
 import { RuntimeBrowserScreencasts } from '../screencast/browser-screencasts'
 import { RuntimeBrowserDialogs } from './browser-dialogs'
@@ -85,6 +86,7 @@ export class RuntimeBrowserCommands {
   readonly browserTabCreate: RuntimeBrowserTabCreation['browserTabCreate']
   readonly browserOpenUrlOnClient: RuntimeBrowserTabCreation['browserOpenUrlOnClient']
   readonly browserTabClose: RuntimeBrowserTabClose['browserTabClose']
+  readonly browserTabSetAccent: RuntimeBrowserTabAccent['browserTabSetAccent']
   readonly browserTabSetProfile: RuntimeBrowserProfiles['browserTabSetProfile']
   readonly browserTabProfileShow: RuntimeBrowserProfiles['browserTabProfileShow']
   readonly browserTabProfileClone: RuntimeBrowserProfiles['browserTabProfileClone']
@@ -112,6 +114,7 @@ export class RuntimeBrowserCommands {
     const queries = new RuntimeBrowserTabQueries(host, targets, catalog)
     const creation = new RuntimeBrowserTabCreation(host, targets)
     const close = new RuntimeBrowserTabClose(queries, host, targets)
+    const accent = new RuntimeBrowserTabAccent(host, targets)
     const profiles = new RuntimeBrowserProfiles(host, targets, catalog)
     const screencasts = new RuntimeBrowserScreencasts(host, targets, catalog)
     const dialogs = new RuntimeBrowserDialogs(targets)
@@ -191,6 +194,7 @@ export class RuntimeBrowserCommands {
     this.browserTabCreate = creation.browserTabCreate.bind(creation)
     this.browserOpenUrlOnClient = creation.browserOpenUrlOnClient.bind(creation)
     this.browserTabClose = close.browserTabClose.bind(close)
+    this.browserTabSetAccent = accent.browserTabSetAccent.bind(accent)
     this.browserTabSetProfile = profiles.browserTabSetProfile.bind(profiles)
     this.browserTabProfileShow = profiles.browserTabProfileShow.bind(profiles)
     this.browserTabProfileClone = profiles.browserTabProfileClone.bind(profiles)

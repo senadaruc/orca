@@ -9,6 +9,7 @@ import {
   requiredString,
   requiredStringAllowingEmpty
 } from './rpc-param-primitives'
+import { BrowserPageAccentColor } from '../browser-page-accent'
 
 export const Element = ExpectUrlBrowserTarget.extend({
   element: requiredString('Missing required --element')
@@ -114,6 +115,11 @@ export const TabClose = z.object({
 
 export const TabSetProfile = BrowserTarget.extend({
   profileId: requiredString('Missing required --profile')
+})
+
+// null clears the accent.
+export const TabSetAccent = BrowserTarget.extend({
+  accentColor: BrowserPageAccentColor.nullable()
 })
 
 export const TabProfileClone = BrowserTarget.extend({

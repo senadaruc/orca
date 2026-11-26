@@ -119,6 +119,11 @@ export type BrowserTabSetProfileResult = {
   profileLabel: string | null
 }
 
+export type BrowserTabSetAccentResult = {
+  browserPageId: string
+  accentColor: string | null
+}
+
 export type BrowserTabShowResult = { tab: BrowserTabInfo }
 export type BrowserTabCurrentResult = { tab: BrowserTabInfo }
 

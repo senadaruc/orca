@@ -193,7 +193,8 @@ export function buildMirroredBrowserTabs(
         (tab.placement?.kind === 'client' ? existing?.page.loadError : tab.loadError) ?? null,
       createdAt,
       browserRuntimeEnvironmentId: environmentId,
-      viewportPresetId: existing?.page.viewportPresetId ?? null
+      viewportPresetId: existing?.page.viewportPresetId ?? null,
+      accentColor: existing?.page.accentColor ?? null
     }
     // Reuse requires workspaceId equality or removed-workspace cleanup misses the retained page list.
     const page = existing && browserPageEqual(existing.page, nextPage) ? existing.page : nextPage

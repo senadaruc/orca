@@ -11,6 +11,8 @@ import {
   sanitizeBrowserPageAnnotation
 } from './browser-page-annotation'
 import { omitRecordKeys } from '../worktrees/teardown/record-key-omission'
+import type { AppState } from '../../types'
+import type { BrowserPage } from '../../../../../shared/browser-workspace-types'
 
 export function createBrowserPageMetadataActions(
   set: BrowserSliceSet,
@@ -20,6 +22,7 @@ export function createBrowserPageMetadataActions(
   | 'setRemoteBrowserPageHandle'
   | 'removeRemoteBrowserPageHandle'
   | 'setBrowserPageViewportPreset'
+  | 'setBrowserPageAccentColor'
   | 'addBrowserPageAnnotation'
   | 'updateBrowserPageAnnotation'
   | 'deleteBrowserPageAnnotation'
@@ -54,27 +57,12 @@ export function createBrowserPageMetadataActions(
       return removedHandle
     },
 
-    // viewportPresetId is intentionally page-local (no workspace-layer UI consumer); do NOT add mirrorWorkspaceFromActivePage here.
+    // viewportPresetId and accentColor are intentionally page-local (no workspace-layer UI consumer); do NOT add mirrorWorkspaceFromActivePage here.
     setBrowserPageViewportPreset: (pageId, viewportPresetId) =>
-      set((s) => {
-        const page = findPage(s.browserPagesByWorkspace, pageId)
-        if (!page) {
-          return s
-        }
-        const workspace = findWorkspace(s.browserTabsByWorktree, page.workspaceId)
-        if (!workspace) {
-          return s
-        }
-        const nextPages = (s.browserPagesByWorkspace[workspace.id] ?? []).map((entry) =>
-          entry.id === pageId ? { ...entry, viewportPresetId } : entry
-        )
-        return {
-          browserPagesByWorkspace: {
-            ...s.browserPagesByWorkspace,
-            [workspace.id]: nextPages
-          }
-        }
-      }),
+      set((s) => patchBrowserPage(s, pageId, { viewportPresetId })),
+
+    setBrowserPageAccentColor: (pageId, accentColor) =>
+      set((s) => patchBrowserPage(s, pageId, { accentColor })),
 
     addBrowserPageAnnotation: (annotation) =>
       set((s) => {
@@ -184,5 +172,29 @@ export function createBrowserPageMetadataActions(
           )
         }
       })
+  }
+}
+
+function patchBrowserPage(
+  s: AppState,
+  pageId: string,
+  patch: Partial<Pick<BrowserPage, 'viewportPresetId' | 'accentColor'>>
+): Partial<AppState> {
+  const page = findPage(s.browserPagesByWorkspace, pageId)
+  if (!page) {
+    return s
+  }
+  const workspace = findWorkspace(s.browserTabsByWorktree, page.workspaceId)
+  if (!workspace) {
+    return s
+  }
+  const nextPages = (s.browserPagesByWorkspace[workspace.id] ?? []).map((entry) =>
+    entry.id === pageId ? { ...entry, ...patch } : entry
+  )
+  return {
+    browserPagesByWorkspace: {
+      ...s.browserPagesByWorkspace,
+      [workspace.id]: nextPages
+    }
   }
 }

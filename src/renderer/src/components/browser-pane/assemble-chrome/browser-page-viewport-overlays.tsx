@@ -84,7 +84,7 @@ export function BrowserPageViewportOverlays({
   grabAnnotations: ReturnType<typeof useBrowserPageGrabAnnotations>
 }): React.JSX.Element {
   const getAgentCursorHost = useCallback(() => containerRef.current, [containerRef])
-  useBrowserAgentCursor(browserTab.id, webviewRef, getAgentCursorHost)
+  useBrowserAgentCursor(browserTab.id, webviewRef, getAgentCursorHost, browserTab.accentColor)
   return (
     <>
       <BrowserGuestAnnotateOverlays

@@ -3,6 +3,10 @@ import type {
   BrowserAgentCursorEvent,
   BrowserAgentViewportEvent
 } from '../../../shared/browser-agent-activity-contract'
+import type {
+  BrowserPageAccentReply,
+  BrowserPageAccentRequest
+} from '../../../shared/browser-page-accent'
 import type { DesktopBrowserBridgeHostNotice } from '../../../shared/desktop-browser-bridge-host-control-contract'
 
 /** window.api.browser members through which main shows an agent driving a page. */
@@ -17,6 +21,9 @@ export type BrowserAgentPresenceApi = {
   /** Main shows the agent's pointer before its input; `agentCursorArrived` answers awaited moves. */
   onAgentCursor: (callback: (data: BrowserAgentCursorEvent) => void) => () => void
   agentCursorArrived: (sequence: number) => void
+  /** Main sets or clears the color of a page's agent glow; `replyPageAccent` answers it. */
+  onRequestPageAccent?: (callback: (data: BrowserPageAccentRequest) => void) => () => void
+  replyPageAccent?: (reply: BrowserPageAccentReply) => void
   /** The pane sizes its page box to an agent's viewport, as a preset does. */
   onAgentViewportApplied?: (callback: (data: BrowserAgentViewportEvent) => void) => () => void
   /** Main says, once per SSH host, that the host started controlling a browser tab. */

@@ -1,6 +1,7 @@
 import type {
   BrowserTabCurrentResult,
   BrowserTabListResult,
+  BrowserTabSetAccentResult,
   BrowserTabShowResult,
   BrowserTabSwitchResult
 } from '../../shared/runtime-browser-contracts'
@@ -17,6 +18,10 @@ import { RuntimeClientError } from '../runtime/types'
 import { isBrowserTabSplitDirection } from '../../shared/browser-tab-split-direction'
 import { getBrowserWorktreeSelector } from '../selectors'
 import { getBrowserCommandTarget } from './browser-command-target'
+import {
+  BROWSER_PAGE_ACCENT_FORMAT_MESSAGE,
+  isBrowserPageAccentColor
+} from '../../shared/browser-page-accent'
 
 export const BROWSER_TAB_HANDLERS: Record<string, CommandHandler> = {
   'open-url': async ({ flags, client, cwd, json }) => {
@@ -71,6 +76,7 @@ export const BROWSER_TAB_HANDLERS: Record<string, CommandHandler> = {
     if (split !== undefined && !isBrowserTabSplitDirection(split)) {
       throw new RuntimeClientError('invalid_argument', '--split must be right, left, down, or up')
     }
+    const accentColor = getAccentColorFlag(flags, 'accent')
     const worktree = await getBrowserWorktreeSelector(flags, cwd, client)
     // Why the caller's tab: the split should sit beside the terminal that ran the command, not
     // wherever the user last clicked. Spread conditionally so a plain create keeps its old payload.
@@ -81,11 +87,29 @@ export const BROWSER_TAB_HANDLERS: Record<string, CommandHandler> = {
         url,
         worktree,
         profileId,
-        ...(split ? { split, ...(callerTabId ? { splitFromTabId: callerTabId } : {}) } : {})
+        ...(split ? { split, ...(callerTabId ? { splitFromTabId: callerTabId } : {}) } : {}),
+        ...(accentColor ? { accentColor } : {})
       },
       { timeoutMs: 60_000 }
     )
     printResult(result, json, (v) => `Created tab ${v.browserPageId}`)
+  },
+  'tab accent': async ({ flags, client, cwd, json }) => {
+    const clear = flags.has('clear')
+    const accentColor = getAccentColorFlag(flags, 'color')
+    if (clear === (accentColor !== undefined)) {
+      throw new RuntimeClientError('invalid_argument', 'Pass exactly one of --color or --clear')
+    }
+    const target = await getBrowserCommandTarget(flags, cwd, client)
+    const result = await client.call<BrowserTabSetAccentResult>('browser.tabSetAccent', {
+      ...target,
+      accentColor: accentColor ?? null
+    })
+    printResult(result, json, (v) =>
+      v.accentColor
+        ? `Set accent of ${v.browserPageId} to ${v.accentColor}`
+        : `Cleared accent of ${v.browserPageId}`
+    )
   },
   'tab close': async ({ flags, client, cwd, json }) => {
     const index = getOptionalNonNegativeIntegerFlag(flags, 'index')
@@ -102,4 +126,18 @@ export const BROWSER_TAB_HANDLERS: Record<string, CommandHandler> = {
     const result = await client.call<unknown>('browser.exec', { command, ...target })
     printResult(result, json, (v) => JSON.stringify(v, null, 2))
   }
+}
+
+function getAccentColorFlag(
+  flags: Map<string, string | boolean>,
+  name: string
+): string | undefined {
+  const value = getPresentStringFlag(flags, name)
+  if (value !== undefined && !isBrowserPageAccentColor(value)) {
+    throw new RuntimeClientError(
+      'invalid_argument',
+      `--${name}: ${BROWSER_PAGE_ACCENT_FORMAT_MESSAGE}`
+    )
+  }
+  return value
 }

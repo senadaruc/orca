@@ -4,6 +4,7 @@ import { normalizeBrowserHistoryEntries } from './workspace-session-browser-hist
 import { normalizeWorkspaceDocHistoryEntries } from './workspace-doc-history'
 import { isDocPreviewUrl } from '../doc-preview-scheme'
 import { salvagingArray } from '../zod-salvage'
+import { BrowserPageAccentColor } from '../browser-page-accent'
 
 const browserLoadErrorSchema = z.object({
   code: z.number(),
@@ -84,6 +85,8 @@ export const browserPageSchema = z.object({
   remoteBrowserPageClientHosted: z.boolean().optional(),
   // Preserve the viewport preset across restart while accepting older sessions.
   viewportPresetId: browserViewportPresetIdSchema.nullable().optional(),
+  // A malformed accent restores as none rather than dropping the page.
+  accentColor: BrowserPageAccentColor.nullable().optional().catch(null),
   // Without docLocation, a workspace document’s blank URL restores as New Tab.
   docLocation: browserPageDocLocationSchema.nullable().optional(),
   // Persist one-level conversion history; reject preview-scheme URLs at this read boundary as at every URL sink.

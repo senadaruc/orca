@@ -222,8 +222,15 @@ export const BROWSER_BASIC_COMMAND_SPECS: CommandSpec[] = withBrowserPageTarget(
     path: ['tab', 'create'],
     summary: 'Create a new browser tab in the current worktree',
     usage:
-      'orca tab create [--url <url>] [--worktree <selector>] [--profile <id>] [--split <right|left|down|up>] [--json]',
-    allowedFlags: [...GLOBAL_FLAGS, 'url', 'worktree', 'profile', 'split']
+      'orca tab create [--url <url>] [--worktree <selector>] [--profile <id>] [--split <right|left|down|up>] [--accent <#rgb|#rrggbb>] [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, 'url', 'worktree', 'profile', 'split', 'accent']
+  },
+  {
+    path: ['tab', 'accent'],
+    summary: "Set or clear the color of a browser tab's agent glow",
+    usage:
+      'orca tab accent (--page <id> | --worktree <selector>) (--color <#rgb|#rrggbb> | --clear) [--json]',
+    allowedFlags: [...GLOBAL_FLAGS, 'page', 'worktree', 'color', 'clear']
   },
   {
     path: ['tab', 'profile', 'list'],

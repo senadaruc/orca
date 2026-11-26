@@ -23,6 +23,7 @@ import {
   TabCurrent,
   TabClose,
   TabList,
+  TabSetAccent,
   TabShow,
   TabSwitch,
   Upload,
@@ -143,6 +144,12 @@ export const BROWSER_CORE_METHODS = [
     permission: 'workspace',
     params: TabClose,
     handler: async (params, { runtime }) => runtime.browserTabClose(params)
+  }),
+  defineMethod({
+    name: 'browser.tabSetAccent',
+    permission: 'workspace',
+    params: TabSetAccent,
+    handler: async (params, { runtime }) => runtime.browserTabSetAccent(params)
   }),
   ...BROWSER_PROFILE_METHODS,
   defineMethod({

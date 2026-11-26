@@ -215,6 +215,7 @@ export const ROOT_HELP_TEXT_PRIMARY = [
   '  tab profile use-default   Switch a browser tab back to the default profile',
   '  tab profile clone         Clone a browser tab into another profile',
   '  tab switch                Switch the active browser tab by --index or --page',
+  "  tab accent                Set or clear the color of a tab's agent glow",
   '  tab close                 Close a browser tab by --index/--page or the current tab',
   '  snapshot                  Accessibility snapshot with element refs (e.g. @e1, @e2)',
   '  goto                      Navigate the active tab to --url',

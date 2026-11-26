@@ -12,4 +12,5 @@ export type BrowserTabCreateRequest = {
   fallbackWorktreeId?: string
   split?: BrowserTabSplitDirection
   splitFromTabId?: string
+  accentColor?: string
 }

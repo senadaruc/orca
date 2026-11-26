@@ -18,6 +18,7 @@ import {
   isDesktopRenderedBrowserTab,
   resolveRemoteCliBrowserWorkspace
 } from './browser-request-workspace-owner'
+import { isBrowserPageAccentColor } from '../../../../shared/browser-page-accent'
 
 function pairedServerWorkspaceError(): string {
   return translate(
@@ -127,6 +128,9 @@ export function registerBrowserRequestIpcBridge(unsubs: (() => void)[]): void {
         // A layout-owner build draws the page once main's frame lands: answer the id it was opened under.
         const browserPageId =
           data.browserPageId ?? pages[0]?.id ?? workspace.activePageId ?? workspace.id
+        if (isBrowserPageAccentColor(data.accentColor)) {
+          useAppStore.getState().setBrowserPageAccentColor(browserPageId, data.accentColor)
+        }
         acquireBrowserAutomationBootstrapLease(worktreeId, browserPageId)
         window.api.ui.replyTabCreate({ requestId: data.requestId, browserPageId })
       } catch (err) {

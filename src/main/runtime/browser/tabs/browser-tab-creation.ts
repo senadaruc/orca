@@ -53,6 +53,7 @@ export class RuntimeBrowserTabCreation {
       placement?: BrowserPageCreationPlacement
       split?: BrowserTabSplitDirection
       splitFromTabId?: string
+      accentColor?: string
     },
     caller?: {
       pairedDeviceId?: string
@@ -86,6 +87,16 @@ export class RuntimeBrowserTabCreation {
       throw new BrowserError(
         'invalid_argument',
         'Opening a browser tab in a split pane needs an Orca desktop window on this host.'
+      )
+    }
+    // Only this host's desktop window draws the agent glow the accent colors.
+    if (
+      params.accentColor &&
+      (params.placement?.kind === 'client' || !this.host.getAvailableAuthoritativeWindow())
+    ) {
+      throw new BrowserError(
+        'invalid_argument',
+        'A browser tab accent needs an Orca desktop window on this host.'
       )
     }
     if (params.placement?.kind === 'client') {
@@ -141,7 +152,8 @@ export class RuntimeBrowserTabCreation {
       focus.focusesHost,
       params.page,
       undefined,
-      params.split ? { direction: params.split, fromTabId: params.splitFromTabId } : undefined
+      params.split ? { direction: params.split, fromTabId: params.splitFromTabId } : undefined,
+      params.accentColor
     )
 
     // Wait for operability, but retain the created id if mounting times out.

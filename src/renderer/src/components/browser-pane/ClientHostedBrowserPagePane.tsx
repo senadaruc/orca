@@ -141,7 +141,7 @@ export function ClientHostedBrowserPagePane({
     () => webviewRef.current?.parentElement ?? null,
     [webviewRef]
   )
-  useBrowserAgentCursor(browserTab.id, webviewRef, getAgentCursorHost)
+  useBrowserAgentCursor(browserTab.id, webviewRef, getAgentCursorHost, browserTab.accentColor)
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current

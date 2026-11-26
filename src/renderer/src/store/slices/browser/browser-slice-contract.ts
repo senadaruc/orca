@@ -206,6 +206,7 @@ export type BrowserSlice = {
     pageId: string,
     viewportPresetId: BrowserViewportPresetId | null
   ) => void
+  setBrowserPageAccentColor: (pageId: string, accentColor: string | null) => void
   addBrowserPageAnnotation: (annotation: BrowserPageAnnotation) => void
   updateBrowserPageAnnotation: (
     pageId: string,

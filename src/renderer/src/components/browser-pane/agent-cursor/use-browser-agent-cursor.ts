@@ -1,9 +1,20 @@
-import { useEffect, type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import { createAgentCursor, type AgentCursorController } from './agent-cursor-motion'
 import { attachBrowserAgentCursorSink } from './browser-agent-activity-state'
 import { readPrefersReducedMotion } from '@/hooks/usePrefersReducedMotion'
+import { isBrowserPageAccentColor } from '../../../../../shared/browser-page-accent'
 
 const AGENT_ACTIVE_ATTRIBUTE = 'data-agent-active'
+const AI_ACTION_ACCENT_PROPERTY = '--ai-action-accent'
+
+/** Set as a property value, never as stylesheet text, so only a validated hex reaches it. */
+function applyAccent(layer: HTMLDivElement, accentColor: string | null | undefined): void {
+  if (isBrowserPageAccentColor(accentColor)) {
+    layer.style.setProperty(AI_ACTION_ACCENT_PROPERTY, accentColor)
+  } else {
+    layer.style.removeProperty(AI_ACTION_ACCENT_PROPERTY)
+  }
+}
 
 /** Whether a person could see the page right now; hidden pages take the cursor without waiting. */
 function isOnScreen(webview: Electron.WebviewTag, rect: DOMRect): boolean {
@@ -26,8 +37,19 @@ function isOnScreen(webview: Electron.WebviewTag, rect: DOMRect): boolean {
 export function useBrowserAgentCursor(
   browserPageId: string,
   webviewRef: RefObject<Electron.WebviewTag | null>,
-  getHost: () => HTMLElement | null
+  getHost: () => HTMLElement | null,
+  accentColor: string | null | undefined
 ): void {
+  const accentRef = useRef(accentColor)
+  const layerRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    accentRef.current = accentColor
+    if (layerRef.current) {
+      applyAccent(layerRef.current, accentColor)
+    }
+  }, [accentColor])
+
   useEffect(() => {
     let drawn: { layer: HTMLDivElement; cursor: AgentCursorController } | null = null
     const awaited = new Set<number>()
@@ -36,6 +58,7 @@ export function useBrowserAgentCursor(
       drawn?.cursor.destroy()
       drawn?.layer.remove()
       drawn = null
+      layerRef.current = null
     }
 
     const ensureDrawn = (
@@ -48,6 +71,8 @@ export function useBrowserAgentCursor(
       const layer = document.createElement('div')
       layer.className = 'browser-agent-cursor-layer'
       layer.setAttribute('aria-hidden', 'true')
+      applyAccent(layer, accentRef.current)
+      layerRef.current = layer
       host.appendChild(layer)
       const cursor = createAgentCursor(layer, {
         reducedMotion: readPrefersReducedMotion,

@@ -51,6 +51,7 @@ export const ORCA_BROWSER_CLI_COMMAND_KEYS = {
     'tab current',
     'tab switch',
     'tab create',
+    'tab accent',
     'tab close',
     'exec'
   ],

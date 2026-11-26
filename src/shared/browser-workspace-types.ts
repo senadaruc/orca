@@ -101,6 +101,8 @@ export type BrowserPage = {
   remoteBrowserPageClientHosted?: boolean
   /** Active CDP viewport emulation preset. null = default (fill pane, no CDP override) */
   viewportPresetId?: BrowserViewportPresetId | null
+  /** Hex color of the agent glow on this page; absent uses the theme's AI accent. */
+  accentColor?: string | null
   /** Set on a page that shows a workspace document; absent on every page that shows a URL. */
   docLocation?: BrowserPageDocLocation | null
   /** Set on a page the address bar converted from the other kind; absent everywhere else. */
